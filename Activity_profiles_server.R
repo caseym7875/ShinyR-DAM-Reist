@@ -28,8 +28,8 @@ sem_of_activity_per_condition_30_min <- reactive(rollapply(activity_per_conditio
 #Adds a mean and SEM averaged columns into the original data frame by repeating each element X times
 activity_per_condition_1 <- reactive({
   d <- data.frame(activity_per_condition(), 
-                  binned_mean = round(rep(mean_of_activity_per_condition_30_min(), each=as.numeric(input$act_profile_window)/as.numeric(input$data_recording_frequency)), 10),
-                  binned_sem = round(rep(sem_of_activity_per_condition_30_min(), each=as.numeric(input$act_profile_window)/as.numeric(input$data_recording_frequency))), 10)
+                  binned_mean = 30*round(rep(mean_of_activity_per_condition_30_min(), each=as.numeric(input$act_profile_window)/as.numeric(input$data_recording_frequency)), 10),
+                  binned_sem = 30*round(rep(sem_of_activity_per_condition_30_min(), each=as.numeric(input$act_profile_window)/as.numeric(input$data_recording_frequency))), 10)
   d
 })
 
@@ -141,9 +141,9 @@ output$activity_profile_by_day <- renderPlot({
     
     
     
-    act_profile_by_day <- ggplot(df_mm2, aes(x=Order_column, y=binned_mean, ymax=3, ymin=0, colour = Condition)) +
-      geom_line()+
-      geom_point()+ 
+    act_profile_by_day <- ggplot(df_mm2, aes(x=Order_column, y=30*binned_mean, ymax=3, ymin=0, colour = Condition)) +
+      geom_line(color = "red")+
+      geom_point(color = "black")+ 
       theme_bw()+
       scale_x_continuous(breaks = b1, 
                          labels=c(rep(c("0", "6", "12", "18"), times=length(unique(df_mm$date))), "0"))+ # X axis labels
@@ -152,14 +152,15 @@ output$activity_profile_by_day <- renderPlot({
           annotate("text", x= b2, y=input$ac_profile_y_lim, label= unique(df_mm$date), size = 7)
         )) +
       # displays day annotations  
-      labs(title= "", x= "Time of the day [H]", y = "Average counts per min")+ 
+      labs(title= "Daily Activity Profiles", x= "Time of the day [H]", y = "Average counts per 30 min")+ 
       coord_cartesian(ylim=c(0,as.numeric(ac_profile_max_y())))+
       scale_colour_manual(values=Plot_colors())+
       theme(legend.text=element_text(size=18))+
       theme(legend.title = element_text(size=18))+
-      theme(axis.text.x=element_text(hjust=0.5, size=15))+
-      theme(axis.text.y=element_text(size=15))+
+      theme(axis.text.x=element_text(hjust=0.5, size=20))+
+      theme(axis.text.y=element_text(size=20))+
       theme(axis.title=element_text(size=18))+
+      theme(plot.title = element_text(size=30, hjust=0.5, face="bold"))+
       guides(colour = guide_legend(override.aes = list(size=1))) + (
         if (input$display_error_bars == "Yes")(
           geom_errorbar(aes(ymax=binned_mean+binned_sem ,ymin=binned_mean-binned_sem), width=0.3)
@@ -318,19 +319,20 @@ output$activity_profile_30_min <- renderPlot({
       
       
       plots_activity_30_min <-  ggplot(d, aes(get(scale), y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
-        geom_point()+
-        geom_line()+
+        geom_point(color = "black")+
+        geom_line(color = "red")+
         geom_vline(xintercept = c(0, 1440))+
-        labs(title= "", x= "Time of the day [H]", y = "Average counts per min")+
+        labs(title= "Average activity profiles in LD", x= "Time of the day [H]", y = "Average counts per 30 min")+
         coord_cartesian(ylim=c(0,as.numeric(ac_profile_max_y())))+
         scale_x_continuous(breaks = brakes_vector, labels=c("0", "6", "12", "18", "0"))+
         theme_bw()+
         scale_colour_manual(values=Plot_colors())+
         theme(legend.text=element_text(size=18))+
         theme(legend.title = element_text(size=18))+
-        theme(axis.text.x=element_text(hjust=0.5, size=15))+
-        theme(axis.text.y=element_text(size=15))+
-        theme(axis.title=element_text(size=18))+
+        theme(axis.text.x=element_text(hjust=0.5, size=20))+
+        theme(axis.text.y=element_text(size=20))+
+        theme(axis.title = element_text(size=18))+
+        theme(plot.title = element_text(size=30, hjust=0.5, face="bold"))+
         guides(colour = guide_legend(override.aes = list(size=1)))+ (   #edits the point size in a legend
           if (input$display_error_bars == "Yes")(
             geom_errorbar(aes(ymax=binned_mean + binned_sem,ymin=binned_mean - binned_sem), width=0.3)

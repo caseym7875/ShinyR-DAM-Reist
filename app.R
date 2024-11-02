@@ -20,6 +20,22 @@ library(lubridate)
 library(colourpicker)
 library(grid)
 
+# install.packages("devtools)
+# install.packages("Rcpp)
+# devtools::install_github("kevinushey/Kmisc")
+# install.packages("shiny")
+# install.packages("plyr")
+# install.packages("ggplot2")
+# install.packages("dplyr")
+# install.packages("zoo")
+# install.packages("gtools")
+# install.packages("scales")
+# install.packages("gridExtra")
+# install.packages("data.table")
+# install.packages("lubridate")
+# install.packages("colourpicker")
+# install.packages("grid")
+
 
 # Define UI for the application
 ui <- fluidPage(
