@@ -20,8 +20,9 @@ library(lubridate)
 library(colourpicker)
 library(grid)
 
-# install.packages("devtools)
-# install.packages("Rcpp)
+# Install prerequisites
+# install.packages("devtools")
+# install.packages("Rcpp")
 # devtools::install_github("kevinushey/Kmisc")
 # install.packages("shiny")
 # install.packages("plyr")

@@ -35,7 +35,7 @@ sidebarLayout(
                            width = NULL, sep = ",", pre = NULL, post = NULL, timeFormat = NULL,
                            timezone = NULL, dragRange = TRUE),
                
-               sliderInput("ac_profile_y_lim", "Max number of counts displayed", 1, 300, 70, step = NULL, round = FALSE,
+               sliderInput("ac_profile_y_lim", "Max number of counts displayed", 1, 300, 100, step = NULL, round = FALSE,
                            ticks = TRUE, animate = FALSE,
                            width = NULL, sep = ",", pre = NULL, post = NULL, timeFormat = NULL,
                            timezone = NULL, dragRange = TRUE),
