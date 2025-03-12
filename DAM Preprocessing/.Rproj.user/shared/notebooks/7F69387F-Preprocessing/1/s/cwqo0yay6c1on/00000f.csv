@@ -1,0 +1,7 @@
+"0","mon_3 <- read.csv(""Raw/Batch 1/activity_per_condition_3.csv"")"
+"0","mon_4 <- read.csv(""Raw/Batch 1/activity_per_condition_4.csv"")"
+"0","mon_5 <- read.csv(""Raw/Batch 1/activity_per_condition_5.csv"")"
+"0","mon_6 <- read.csv(""Raw/Batch 1/activity_per_condition_6.csv"")"
+"0","mon_16 <- read.csv(""Raw/Batch 1/activity_per_condition_16.csv"")"
+"0","mon_17 <- read.csv(""Raw/Batch 1/activity_per_condition_17.csv"")"
+"0","mon_18 <- read.csv(""Raw/Batch 1/activity_per_condition_18.csv"")"

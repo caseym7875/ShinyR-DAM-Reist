@@ -339,6 +339,14 @@ melted <- reactive({
   d
 })
 
+output$download_melted <- downloadHandler(
+  filename = function() {
+    paste("melted", Sys.Date(), ".csv", sep = "")
+  },
+  content = function(file) {
+    write.csv(melted(), file)
+  }
+)
 
 # A vector of all column names containing fly locomotor data
 all_channels <- reactive(colnames(s_8())[-c(1:4, length(colnames(s_8())), length(colnames(s_8()))-1, length(colnames(s_8()))-2, length(colnames(s_8()))-3,length(colnames(s_8()))-4)])

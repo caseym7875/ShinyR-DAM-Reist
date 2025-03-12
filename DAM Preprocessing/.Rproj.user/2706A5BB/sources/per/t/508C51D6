@@ -1,0 +1,28 @@
+{
+    "id": "508C51D6",
+    "path": null,
+    "project_path": null,
+    "type": "object_explorer",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1741709957909.0,
+    "source_on_save": false,
+    "relative_order": 9,
+    "properties": {
+        "id": "ddae7b0b949e4cdf8f97c379e3b035fb",
+        "name": "analysis_list",
+        "title": "analysis_list",
+        "language": "R",
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 2894491684056,
+    "encoding": "",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1741709957909,
+    "read_only": false,
+    "read_only_alternatives": []
+}

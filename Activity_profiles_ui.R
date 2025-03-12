@@ -61,11 +61,14 @@ sidebarLayout(
                ),     
                actionButton("refresh_1", "Plot Activity Profiles"),
                
-               tags$br()
+               tags$br(),
                
-               
+               # Add download button for exporting the CSV
+               tags$head(tags$style(HTML('#download_activity_data{background-color:#FCE897}'))),  
+               downloadButton("download_activity_data", "Download Activity Data CSV"),
               
-               
+               tags$head(tags$style(HTML('#download_melted{background-color:#FCE897}'))),  
+               downloadButton("download_melted", "Download melted")
   ),
   
   conditionalPanel(

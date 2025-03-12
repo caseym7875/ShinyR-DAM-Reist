@@ -8,7 +8,7 @@ melted_alive_LD <- reactive(filter(melted_alive(), Light_cycle=="LD"))
 #Claculates mean and SEM values for every timepoint per condition in LD
 activity_per_condition<- reactive({
 
-  
+
   DT<- data.table(melted_alive_LD())
   p<- DT[,list(mean=as.numeric(mean(value/input$data_recording_frequency)), SEM=as.numeric(sd(value/input$data_recording_frequency)/sqrt(length(value)))), by=c("Dec_time", "Dec_ZT_time", "Condition")]
   p$Condition <- factor(p$Condition, levels = unique(conditions()))
@@ -17,6 +17,22 @@ activity_per_condition<- reactive({
   p
 })
 
+# activity_per_condition<- reactive({
+#   
+#   
+#   p <- read.csv("C:/Users/Casey/Desktop/DAM Preprocessing/Raw/merged_5_17.csv")
+#   p
+# })
+
+output$download_activity_data <- downloadHandler(
+  filename = function() {
+    paste("activity_per_condition", Sys.Date(), ".csv", sep = "")
+  },
+  content = function(file) {
+    write.csv(activity_per_condition(), file, row.names = FALSE)
+  }
+)
+
 
 
 # Averaging activity into X min intervals. The original approach was just "binning" the data over 30 min, hence the object names. Legacy... 
@@ -24,6 +40,7 @@ activity_per_condition<- reactive({
 # Calculating vectors of average values over X min non overlapping windows
 mean_of_activity_per_condition_30_min <- reactive(rollapply(activity_per_condition()$mean, width = as.numeric(input$act_profile_window)/as.numeric(input$data_recording_frequency), by = as.numeric(input$act_profile_window)/as.numeric(input$data_recording_frequency), FUN = mean))
 sem_of_activity_per_condition_30_min <- reactive(rollapply(activity_per_condition()$SEM, width = as.numeric(input$act_profile_window)/as.numeric(input$data_recording_frequency), by = as.numeric(input$act_profile_window)/as.numeric(input$data_recording_frequency), FUN = mean))
+
 
 #Adds a mean and SEM averaged columns into the original data frame by repeating each element X times
 activity_per_condition_1 <- reactive({

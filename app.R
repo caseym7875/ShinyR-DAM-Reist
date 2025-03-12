@@ -20,7 +20,7 @@ library(lubridate)
 library(colourpicker)
 library(grid)
 
-# Install prerequisites
+#Install prerequisites
 # install.packages("devtools")
 # install.packages("Rcpp")
 # devtools::install_github("kevinushey/Kmisc")
