@@ -10,27 +10,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 library(tidyverse)
+library(zoo)
 ```
 
-#Loading dev
+#Loading
 
-# Batch 1
-```{r}
-# mon_3 <- read.csv("Raw/Batch 1/activity_per_condition_3.csv")
-# mon_4 <- read.csv("Raw/Batch 1/activity_per_condition_4.csv")
-# mon_5 <- read.csv("Raw/Batch 1/activity_per_condition_5.csv")
-# mon_6 <- read.csv("Raw/Batch 1/activity_per_condition_6.csv")
-# mon_16 <- read.csv("Raw/Batch 1/activity_per_condition_16.csv")
-# mon_17 <- read.csv("Raw/Batch 1/activity_per_condition_17.csv")
-# mon_18 <- read.csv("Raw/Batch 1/activity_per_condition_18.csv")
-```
-
-# Batch 2
-```{r}
-# mon_16 <- read.csv("Raw/Batch 2/activity_per_condition_16.csv")
-# mon_17 <- read.csv("Raw/Batch 2/activity_per_condition_17.csv")
-# mon_18 <- read.csv("Raw/Batch 2/activity_per_condition_18.csv")
-```
 
 # All
 ```{r}
@@ -235,23 +219,15 @@ plot_activity <- function(d){
 }
 ```
 
+
+# Time series
 ```{r}
 for (df in analysis_list){
   plot_activity(binning(df))
 }
 ```
-```{r}
-for (df in analysis_list){
-  binning(df)
-}
-```
 
-
-```{r}
-
-```
-
-
+# Boxplots
 ```{r}
 for (df in analysis_list){
   p <- ggplot(df, aes(y = mean, fill = Condition))+
@@ -260,25 +236,38 @@ for (df in analysis_list){
   print(p)
 }
 ```
+
+
+# Anova and Tukey
 ```{r}
-a <- analysis_list[[1]]
+ano <- aov(data = analysis_list[[1]], mean~Dec_time + factor(Condition))
+print(summary(ano))
+
+(Tuk <- TukeyHSD(ano, "factor(Condition)"))
+plot(Tuk)
+```
+```{r}
+ano <- aov(data = analysis_list[[2]], mean~Dec_time + factor(Condition))
+print(summary(ano))
+
+(Tuk <- TukeyHSD(ano, "factor(Condition)"))
+plot(Tuk)
+```
+```{r}
+ano <- aov(data = analysis_list[[3]], mean~Dec_time + factor(Condition))
+print(summary(ano))
+
+(Tuk <- TukeyHSD(ano, "factor(Condition)"))
+plot(Tuk)
 ```
 
 ```{r}
-a_test <- analysis_list[[1]] %>% filter(Condition != "1 Male")
-t.test(mean ~ Condition, data = a_test)
-```
-```{r}
-a_test <- analysis_list[[2]] %>% filter(Condition != "1 Female")
-t.test(mean ~ Condition, data = a_test)
+ano <- aov(data = analysis_list[[4]], mean~Dec_time + factor(Condition))
+print(summary(ano))
+
+(Tuk <- TukeyHSD(ano, "factor(Condition)"))
+plot(Tuk)
 ```
 
-```{r}
-a_test <- analysis_list[[3]] %>% filter(Condition != "1 Male")
-t.test(mean ~ Condition, data = a_test)
-```
-```{r}
-a_test <- analysis_list[[4]] %>% filter(Condition != "1 Female")
-t.test(mean ~ Condition, data = a_test)
-```
+
 

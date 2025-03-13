@@ -1,6 +1,0 @@
-"0","rigs <- c(""3"", ""4"", ""5"", ""6"", ""16"", ""17"", ""18"")"
-"0","rig_list <- list()"
-"0",""
-"0","for (r in rigs){"
-"0","  rig_list[[r]] <- read.csv(paste0(""Average activity profiles in LD/"", r, ""_Average_activity_profiles_in_LD.csv""))"
-"0","}"
