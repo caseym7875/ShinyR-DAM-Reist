@@ -29,18 +29,36 @@ mon_18_1 <- read.csv("Raw/All/activity_per_condition_18_1.csv")
 mon_16_2 <- read.csv("Raw/All/activity_per_condition_16_2.csv")
 mon_17_2 <- read.csv("Raw/All/activity_per_condition_17_2.csv")
 mon_18_2 <- read.csv("Raw/All/activity_per_condition_18_2.csv")
+
+mon_16_3 <- read.csv("Raw/All/activity_per_condition_16_3.csv")
+mon_17_3 <- read.csv("Raw/All/activity_per_condition_17_3.csv")
+mon_18_3 <- read.csv("Raw/All/activity_per_condition_18_3.csv")
+mon_19_3 <- read.csv("Raw/All/activity_per_condition_19_3.csv")
+mon_20_3 <- read.csv("Raw/All/activity_per_condition_20_3.csv")
 ```
 
 
 ```{r}
-# monitors_batch_1 <- list(mon_3, mon_4, mon_5, mon_6, mon_16, mon_17, mon_18)
-# monitor_ids_batch_1 <- c(3, 4, 5, 6, 16, 17, 18)
 
-# monitors_batch_2 <- list(mon_16, mon_17, mon_18)
-# monitor_ids_batch_2 <- c(16, 17, 18)
+monitors_all <- list(mon_3_1, mon_4_1, mon_5_1, mon_6_1, mon_16_1, mon_17_1, mon_18_1, 
+                     mon_16_2, mon_17_2, mon_18_2,
+                     mon_16_3, mon_17_3, mon_18_3, mon_19_3, mon_20_3)
 
-monitors_all <- list(mon_3_1, mon_4_1, mon_5_1, mon_6_1, mon_16_1, mon_17_1, mon_18_1, mon_16_2, mon_17_2, mon_18_2)
-monitor_ids_all <- c("3_1", "4_1", "5_1", "6_1", "16_1", "17_1", "18_1", "16_2", "17_2", "18_2")
+monitor_ids_all <- c("3_1", "4_1", "5_1", "6_1", "16_1", "17_1", "18_1", 
+                     "16_2", "17_2", "18_2",
+                     "16_3", "17_3", "18_3", "19_3","20_3")
+
+condition_map <- c("1" = "WT", "3" = "D1E Het", "4" = "D1E Homo", "5" = "P-L Homo", "6" = "P-L Het")
+
+# Update the Condition column across the list of data frames
+monitors_all <- lapply(monitors_all, function(df) {
+  df$Condition <- sapply(df$Condition, function(cond) {
+    parts <- strsplit(cond, " ", fixed = TRUE)[[1]]
+    new_prefix <- condition_map[parts[1]]
+    paste(new_prefix, parts[-1], collapse = " ")
+  })
+  df
+})
 
 condition_seperator <- function(monitors, monitor_ids){
   
@@ -56,8 +74,6 @@ condition_seperator <- function(monitors, monitor_ids){
   return(all_conditions)
 }
 
-#all_conditions <- condition_seperator(monitors_batch_2, monitor_ids_batch_2)
-#all_conditions <- condition_seperator(monitors_batch_1, monitor_ids_batch_1)
 all_conditions <- condition_seperator(monitors_all, monitor_ids_all)
 ```
 
@@ -147,13 +163,13 @@ for (group_key in names(condition_groups)) {
 
 
 ```{r}
-D1e_male <- bind_rows(merged_conditions[["1_Male_merged"]], merged_conditions[["3_Male_merged"]], merged_conditions[["4_Male_merged"]])
+D1e_male <- bind_rows(merged_conditions[["WT_Male_merged"]], merged_conditions[["D1E_Male_merged"]], merged_conditions[["D1E_Male_merged"]])
 
-D1e_female <- bind_rows(merged_conditions[["1_Female_merged"]], merged_conditions[["3_Female_merged"]], merged_conditions[["4_Female_merged"]])
+D1e_female <- bind_rows(merged_conditions[["WT_Female_merged"]], merged_conditions[["D1E_Female_merged"]], merged_conditions[["D1E_Female_merged"]])
 
-P_L_male <- bind_rows(merged_conditions[["1_Male_merged"]], merged_conditions[["5_Male_merged"]], merged_conditions[["6_Male_merged"]])
+P_L_male <- bind_rows(merged_conditions[["WT_Male_merged"]], merged_conditions[["P-L_Male_merged"]], merged_conditions[["P-L_Male_merged"]])
 
-P_L_female <- bind_rows(merged_conditions[["1_Female_merged"]], merged_conditions[["5_Female_merged"]], merged_conditions[["6_Female_merged"]])
+P_L_female <- bind_rows(merged_conditions[["WT_Female_merged"]], merged_conditions[["P-L_Female_merged"]], merged_conditions[["P-L_Female_merged"]])
 
 analysis_list <- list(D1e_male, D1e_female, P_L_male, P_L_female)
 ```
@@ -187,29 +203,29 @@ binning <- function(df){
 ```
 
 ```{r}
-plot_activity <- function(d){
+plot_activity <- function(d, title_){
   brakes_vector <- c(0, 360, 720, 1080, 1440)
   
   ac_profile_max_y <- 65
-  colors <- c("#000000", "#E0CB02", "#21918c", "#BBBBBB")
+  colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
   display_error_bars <- FALSE
   
   p<- plots_activity_30_min <-  ggplot(d, aes(Dec_time, y=30*binned_mean, ymax=3, ymin=0, colour=Condition)) +
     geom_line(linewidth = 1.5)+
     #geom_point(color = "black", size = 0.6)+
     geom_vline(xintercept = c(0, 1440))+
-    labs(title= "Average activity profiles in LD All", x= "Time of the day [H]",
+    labs(title= title_, x= "Time of the day [H]",
          y = "Average counts per 30 min")+
     coord_cartesian(ylim=c(0,ac_profile_max_y))+
     scale_x_continuous(breaks = brakes_vector, labels=c("0", "6", "12", "18", "0"))+
     theme_bw()+
     scale_colour_manual(values=colors)+
-    theme(legend.text=element_text(size=18))+
+    theme(legend.text=element_text(size=14))+
     theme(legend.title = element_text(size=18))+
     theme(axis.text.x=element_text(hjust=0.5, size=20))+
     theme(axis.text.y=element_text(size=20))+
     theme(axis.title = element_text(size=18))+
-    theme(plot.title = element_text(size=20, hjust=0.5, face="bold"))+
+    theme(plot.title = element_text(size=20, hjust=-0.3, face="bold"))+
     guides(colour = guide_legend(override.aes = list(size=1)))+ (   #edits the point size in a legend
       if (display_error_bars == "Yes")(
         geom_errorbar(aes(ymax=30*(binned_mean + binned_sem),ymin=30*(binned_mean - binned_sem)), width=0.3)
@@ -222,9 +238,13 @@ plot_activity <- function(d){
 
 # Time series
 ```{r}
-for (df in analysis_list){
-  plot_activity(binning(df))
+title_list <- c("D1E Male", "D1E Female", "P-L Male", "P-L Female")
+
+for (i in seq(4)){
+  plot_activity(binning(analysis_list[[i]]), paste("Average Activity Profiles for", title_list[i]))
 }
+
+#
 ```
 
 # Boxplots
@@ -246,6 +266,7 @@ print(summary(ano))
 (Tuk <- TukeyHSD(ano, "factor(Condition)"))
 plot(Tuk)
 ```
+
 ```{r}
 ano <- aov(data = analysis_list[[2]], mean~Dec_time + factor(Condition))
 print(summary(ano))
@@ -253,6 +274,7 @@ print(summary(ano))
 (Tuk <- TukeyHSD(ano, "factor(Condition)"))
 plot(Tuk)
 ```
+
 ```{r}
 ano <- aov(data = analysis_list[[3]], mean~Dec_time + factor(Condition))
 print(summary(ano))
