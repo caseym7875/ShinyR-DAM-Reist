@@ -197,23 +197,96 @@ binning <- function(df){
   
   #Drops unnecessary columns containing not averaged mean and SEM data
   activity_30min_mean <- select(activity_30min_mean_2, Dec_time, Dec_ZT_time, Condition, binned_mean, binned_sem)
+  activity_30min_mean$binned_mean <-  30*activity_30min_mean$binned_mean
   
   return(activity_30min_mean)
 }
 ```
 
 ```{r}
-plot_activity <- function(d, title_){
+plot_activity <- function(d, title_, lull_period){
   brakes_vector <- c(0, 360, 720, 1080, 1440)
   
   ac_profile_max_y <- 65
   colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
   display_error_bars <- FALSE
   
-  p<- plots_activity_30_min <-  ggplot(d, aes(Dec_time, y=30*binned_mean, ymax=3, ymin=0, colour=Condition)) +
+  p<- plots_activity_30_min <-  ggplot(d, aes(Dec_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
     geom_line(linewidth = 1.5)+
     #geom_point(color = "black", size = 0.6)+
-    geom_vline(xintercept = c(0, 1440))+
+    geom_vline(xintercept = c(0, 360, lull_period[1], lull_period[2], 1320, 1440))+
+    labs(title= title_, x= "Time of the day [H]",
+         y = "Average counts per 30 min")+
+    coord_cartesian(ylim=c(0,ac_profile_max_y))+
+    scale_x_continuous(breaks = brakes_vector, labels=c("0", "6", "12", "18", "0"))+
+    theme_bw()+
+    scale_colour_manual(values=colors)+
+    theme(legend.text=element_text(size=14))+
+    theme(legend.title = element_text(size=18))+
+    theme(axis.text.x=element_text(hjust=0.5, size=20))+
+    theme(axis.text.y=element_text(size=20))+
+    theme(axis.title = element_text(size=18))+
+    theme(plot.title = element_text(size=20, hjust=-0.3, face="bold"))+
+    guides(color = "none")
+    # guides(colour = guide_legend(override.aes = list(size=1)))+ (   #edits the point size in a legend
+    #   if (display_error_bars == "Yes")(
+    #     geom_errorbar(aes(ymax=30*(binned_mean + binned_sem),ymin=30*(binned_mean - binned_sem)), width=0.3)
+    #   ))
+  
+  print(p)
+}
+```
+
+
+# Time series
+```{r}
+title_list <- c("D1E Male", "D1E Female", "P-L Male", "P-L Female")
+lull_period <- list(c(630, 870), c(720, 960), c(630, 870), c(720, 960))
+analysis_list_binned <- list()
+
+for (i in seq(4)){
+  analysis_list_binned[[i]] <- binning(analysis_list[[i]])
+}
+
+for (i in seq(4)){
+  plot_activity(analysis_list_binned[[i]], paste("Average Activity Profiles for", 
+                                                   title_list[i]), lull_period[[i]])
+}
+
+```
+
+```{r}
+# Define the breakpoints
+breaks <- c(0, 360, 630, 870, 1320, 1440)
+
+# Create a list to store the results
+time_slices <- list()
+
+# Loop through each time interval
+for (i in 1:(length(breaks) - 1)) {
+  # Subset the data for the interval
+  time_slices[[i]] <- analysis_list_binned[analysis_list_binned$Dec_time >= breaks[i] & analysis_list_binned$Dec_time < breaks[i + 1], ]
+}
+
+# Optionally name the list elements for clarity
+names(time_slices) <- paste0("slice_", 1:(length(breaks) - 1))
+
+```
+
+
+# Deprecated corss average
+```{r}
+plot_activity_2 <- function(d, title_, lull_period){
+  brakes_vector <- c(0, 360, 720, 1080, 1440)
+  
+  ac_profile_max_y <- 65
+  colors <- c("#000000")
+  display_error_bars <- FALSE
+  
+  p<- plots_activity_30_min <-  ggplot(d, aes(Dec_time, y=30*binned_mean, ymax=3, ymin=0)) +
+    geom_line(linewidth = 1.5)+
+    #geom_point(color = "black", size = 0.6)+
+    geom_vline(xintercept = c(0, 360, lull_period[1], lull_period[2], 1320, 1440))+
     labs(title= title_, x= "Time of the day [H]",
          y = "Average counts per 30 min")+
     coord_cartesian(ylim=c(0,ac_profile_max_y))+
@@ -236,16 +309,112 @@ plot_activity <- function(d, title_){
 ```
 
 
-# Time series
 ```{r}
-title_list <- c("D1E Male", "D1E Female", "P-L Male", "P-L Female")
+analysis_list_collapsed <- list()
 
-for (i in seq(4)){
-  plot_activity(binning(analysis_list[[i]]), paste("Average Activity Profiles for", title_list[i]))
+for (i in seq_along(analysis_list)) {
+  df <- binning(analysis_list[[i]])
+  analysis_list_collapsed[[i]] <- df %>%
+    group_by(Dec_time) %>%
+    summarise(binned_mean = mean(binned_mean, na.rm = TRUE),
+              .groups = "drop")
 }
 
-#
 ```
+
+
+```{r}
+title_list <- c("D1E Male", "D1E Female", "P-L Male", "P-L Female")
+lull_period <- list(c(600, 900), c(720, 900), c(630, 930), c(660, 960))
+
+for (i in seq(4)){
+  plot_activity_2(analysis_list_collapsed[[i]], paste("Average Activity Profiles for", title_list[i]), lull_period[[i]])
+}
+```
+
+# Auto act period detection
+```{r}
+library(signal)
+library(pracma)
+
+activity <- 30*analysis_list_collapsed[[1]]$binned_mean
+
+# === Step 1: Smooth the data ===
+activity_smoothed <- signal::filter(rep(1/3, 3), 1, activity)  # 3-point moving average
+
+# === Step 2: Find peaks ===
+peaks <- pracma::findpeaks(as.numeric(activity_smoothed), minpeakheight = 20, minpeakdistance = 6, threshold = 5)
+# peaks is a matrix: col 2 gives the peak positions
+
+# === Step 3: Find valleys (troughs) ===
+inverted <- -activity_smoothed
+valleys <- pracma::findpeaks(as.numeric(inverted), minpeakheight = -15, minpeakdistance = 6)
+# valleys are returned like peaks; get the positions
+valley_pos <- sort(valleys[,2])  # sorted indices
+
+# === Step 4: Identify activity periods ===
+activity_periods <- list()
+for (i in 1:(length(valley_pos) - 1)) {
+  start <- valley_pos[i]
+  end <- valley_pos[i + 1]
+  # Check if any peak falls in this range
+  if (any(peaks[,2] > start & peaks[,2] < end)) {
+    activity_periods[[length(activity_periods)+1]] <- c(start, end)
+  }
+}
+
+# === Optional: Plot ===
+plot(as.numeric(activity_smoothed), type = "l", lwd = 2, main = "Detected Activity Periods")
+points(peaks[,2], activity_smoothed[peaks[,2]], col = "blue", pch = 19)
+points(valley_pos, activity_smoothed[valley_pos], col = "red", pch = 4)
+for (ap in activity_periods) {
+  rect(ap[1], 0, ap[2], max(activity_smoothed), col = rgb(0,1,0,0.2), border = NA)
+}
+
+```
+
+
+```{r}
+activity_smoothed <- signal::filter(rep(1,3), 1, activity)
+plot(as.numeric(activity_smoothed), type = "l", lwd = 2,
+     main = "Smoothed Activity",
+     xlab = "Time bin", ylab = "Activity")
+#points(peaks[,2], activity_smoothed[peaks[,2]], col = "blue", pch = 19)
+
+```
+
+```{r}
+# Assuming you have a numeric vector `activity`
+activity_derivative <- diff(activity_smoothed)
+
+# To align the derivative with the time bins (optional, e.g., for plotting)
+time_bins <- 1:length(activity_smoothed)
+time_bins_derivative <- time_bins[-1]  # drop the first bin since diff reduces length by 1
+
+# Plot it
+plot(time_bins_derivative, activity_derivative, type = "l",
+     main = "Activity Derivative",
+     xlab = "Time bin", ylab = "Change in Activity")
+
+```
+
+```{r}
+# Assuming you have a numeric vector `activity`
+smoothed_activity <- rollmean(activity_derivative, k = 3, fill = NA, align = "center")
+activity_derivative2 <- diff(smoothed_activity)
+
+# To align the derivative with the time bins (optional, e.g., for plotting)
+time_bins <- 1:length(activity_derivative)
+time_bins_derivative2 <- time_bins[-1]  # drop the first bin since diff reduces length by 1
+
+
+
+# Plot it
+plot(time_bins_derivative2, activity_derivative2, type = "l",
+     main = "Activity Derivative",
+     xlab = "Time bin", ylab = "Change in Activity")
+```
+
 
 # Boxplots
 ```{r}
