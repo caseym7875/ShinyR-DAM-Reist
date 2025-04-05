@@ -196,7 +196,7 @@ binning <- function(df){
   activity_30min_mean_2 <- activity_per_condition_1[seq(1, nrow(activity_per_condition_1), by = as.numeric(act_profile_window)/as.numeric(data_recording_frequency)),]
   
   #Drops unnecessary columns containing not averaged mean and SEM data
-  activity_30min_mean <- select(activity_30min_mean_2, Dec_time, Dec_ZT_time, Condition, binned_mean, binned_sem)
+  activity_30min_mean <- select(activity_30min_mean_2, Dec_time, Dec_ZT_time, shifted_time, Condition, binned_mean, binned_sem)
   activity_30min_mean$binned_mean <-  30*activity_30min_mean$binned_mean
   
   return(activity_30min_mean)
@@ -204,21 +204,21 @@ binning <- function(df){
 ```
 
 ```{r}
-plot_activity <- function(d, title_, lull_period){
-  brakes_vector <- c(0, 360, 720, 1080, 1440)
+plot_activity <- function(d, title_, lull_period, shift){
+  brakes_vector <- c((0+shift) %% 1440, (360+shift) %% 1440, (480+shift) %% 1440, (720+shift) %% 1440, (1080+shift) %% 1440, (1200+shift) %% 1440)
   
   ac_profile_max_y <- 65
   colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
   display_error_bars <- FALSE
   
-  p<- plots_activity_30_min <-  ggplot(d, aes(Dec_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
+  p<- plots_activity_30_min <-  ggplot(d, aes(shifted_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
     geom_line(linewidth = 1.5)+
     #geom_point(color = "black", size = 0.6)+
-    geom_vline(xintercept = c(0, 360, lull_period[1], lull_period[2], 1320, 1440))+
+    geom_vline(xintercept = c((360+shift) %% 1440, lull_period[1], lull_period[2], (1320+shift) %% 1440))+
     labs(title= title_, x= "Time of the day [H]",
          y = "Average counts per 30 min")+
     coord_cartesian(ylim=c(0,ac_profile_max_y))+
-    scale_x_continuous(breaks = brakes_vector, labels=c("0", "6", "12", "18", "0"))+
+    scale_x_continuous(breaks = brakes_vector, labels=c("0", "6", "8", "12", "18", "20"))+
     theme_bw()+
     scale_colour_manual(values=colors)+
     theme(legend.text=element_text(size=14))+
@@ -241,38 +241,131 @@ plot_activity <- function(d, title_, lull_period){
 # Time series
 ```{r}
 title_list <- c("D1E Male", "D1E Female", "P-L Male", "P-L Female")
-lull_period <- list(c(630, 870), c(720, 960), c(630, 870), c(720, 960))
+shift <- -360
+lull_period <- list((c(630, 870)+shift) %% 1440, (c(720, 960)+shift) %% 1440, (c(630, 870)+shift) %% 1440, (c(720, 960)+shift) %% 1440)
 analysis_list_binned <- list()
+
 
 for (i in seq(4)){
   analysis_list_binned[[i]] <- binning(analysis_list[[i]])
 }
 
 for (i in seq(4)){
-  plot_activity(analysis_list_binned[[i]], paste("Average Activity Profiles for", 
-                                                   title_list[i]), lull_period[[i]])
+  analysis_list[[i]]$shifted_time <- (analysis_list[[i]]$Dec_time + shift) %% 1440
+}
+
+for (i in seq(4)){
+  plot_activity(binning(analysis_list[[i]]), paste("Average Activity Profiles for", 
+                                                   title_list[i]), lull_period[[i]], shift)
 }
 
 ```
 
 ```{r}
-# Define the breakpoints
-breaks <- c(0, 360, 630, 870, 1320, 1440)
-
-# Create a list to store the results
-time_slices <- list()
-
-# Loop through each time interval
-for (i in 1:(length(breaks) - 1)) {
-  # Subset the data for the interval
-  time_slices[[i]] <- analysis_list_binned[analysis_list_binned$Dec_time >= breaks[i] & analysis_list_binned$Dec_time < breaks[i + 1], ]
+plot_activity2 <- function(d, title_){
+  brakes_vector <- c(0, 360, 720, 1080, 1440)
+  
+  ac_profile_max_y <- 65
+  colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
+  display_error_bars <- FALSE
+  
+  p<- plots_activity_30_min <-  ggplot(d, aes(Dec_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
+    geom_line(linewidth = 1.5)+
+    #geom_point(color = "black", size = 0.6)+
+    #geom_vline(xintercept = c(0, 360, lull_period[1], lull_period[2], 1320, 1440))+
+    labs(title= title_, x= "Time of the day [H]",
+         y = "Average counts per 30 min")+
+    coord_cartesian(ylim=c(0,ac_profile_max_y))+
+    scale_x_continuous(breaks = brakes_vector, labels=c("0", "6", "12", "18", "0"))+
+    theme_bw()+
+    scale_colour_manual(values=colors)+
+    theme(legend.text=element_text(size=14))+
+    theme(legend.title = element_text(size=18))+
+    theme(axis.text.x=element_text(hjust=0.5, size=20))+
+    theme(axis.text.y=element_text(size=20))+
+    theme(axis.title = element_text(size=18))+
+    theme(plot.title = element_text(size=20, hjust=-0.3, face="bold"))+
+    guides(color = "none")
+    # guides(colour = guide_legend(override.aes = list(size=1)))+ (   #edits the point size in a legend
+    #   if (display_error_bars == "Yes")(
+    #     geom_errorbar(aes(ymax=30*(binned_mean + binned_sem),ymin=30*(binned_mean - binned_sem)), width=0.3)
+    #   ))
+  
+  print(p)
 }
+```
 
-# Optionally name the list elements for clarity
-names(time_slices) <- paste0("slice_", 1:(length(breaks) - 1))
+# Activity Period Analysis
+```{r}
+# Define the breakpoints
+breaks <- c((360+shift) %% 1440, (630+shift) %% 1440, (870+shift) %% 1440, (1320+shift) %% 1440, 1440)
+
+# Apply the slicing to each dataframe in the list
+sliced_lists <- lapply(analysis_list, function(df) {
+  lapply(1:(length(breaks) - 1), function(i) {
+    df[df$shifted_time >= breaks[i] & df$shifted_time < breaks[i + 1], ]
+  })
+})
 
 ```
 
+```{r}
+for (i in seq(4)){
+  for (j in seq(4)){
+    plot_activity2(binning(sliced_lists[[i]][[j]]), paste("Average Activity Profiles for", 
+                                                          title_list[i]))
+  }
+}
+```
+
+
+```{r}
+# A small helper function to compute mean ± standard error
+mean_se <- function(x) {
+  m <- mean(x)
+  se <- sd(x) / sqrt(length(x))
+  data.frame(y = m, ymin = m - se, ymax = m + se)
+}
+
+plot_list <- list()
+
+for(i in seq_along(sliced_lists)) {
+  
+  # Combine the 5 data frames into one, tagging each row with its AP index
+  df_combined <- bind_rows(lapply(seq_along(sliced_lists[[i]]), function(j) {
+    tmp <- sliced_lists[[i]][[j]]
+    tmp$AP <- paste0("AP", j)  # e.g. "AP1", "AP2", ...
+    tmp
+  }))
+  
+  p <- ggplot(df_combined, aes(x = AP, y = mean, fill = Condition)) +
+    stat_summary(fun = mean, geom = "bar", position = position_dodge()) +
+    stat_summary(fun.data = mean_se, geom = "errorbar",
+                 position = position_dodge(width = 0.9), width = 0.2) +
+    labs(title = paste("Mean Activity Periods for", title_list[i]),
+         x = "Activity Period", y = "Mean Activity") +
+    theme(axis.text = element_text(size = 12),
+          axis.title = element_text(size = 14)) +
+    theme_minimal()
+  
+  plot_list[[i]] <- p
+}
+
+plot_list[[1]]
+plot_list[[2]]
+plot_list[[3]]
+plot_list[[4]]
+
+```
+```{r}
+for (i in seq(4)){
+  ano <- aov(data = sliced_lists[[1]][[i]], mean~Dec_time + factor(Condition))
+  print(summary(ano))
+  
+  (Tuk <- TukeyHSD(ano, "factor(Condition)"))
+  plot(Tuk)
+}
+```
 
 # Boxplots
 ```{r}
