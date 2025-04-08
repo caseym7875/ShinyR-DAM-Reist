@@ -207,6 +207,8 @@ binning <- function(df){
 plot_activity <- function(d, title_, lull_period, shift){
   brakes_vector <- c((0+shift) %% 1440, (360+shift) %% 1440, (480+shift) %% 1440, (720+shift) %% 1440, (1080+shift) %% 1440, (1200+shift) %% 1440)
   
+  vlines <- c((360+shift) %% 1440, lull_period[1], lull_period[2], (1320+shift) %% 1440)
+  
   ac_profile_max_y <- 65
   colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
   display_error_bars <- FALSE
@@ -214,15 +216,14 @@ plot_activity <- function(d, title_, lull_period, shift){
   p<- plots_activity_30_min <-  ggplot(d, aes(shifted_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
     geom_line(linewidth = 1.5)+
     #geom_point(color = "black", size = 0.6)+
-    geom_vline(xintercept = c((360+shift) %% 1440, lull_period[1], lull_period[2], (1320+shift) %% 1440))+
+    geom_vline(xintercept = vlines)+
     labs(title= title_, x= "Time of the day [H]",
          y = "Average counts per 30 min")+
-    coord_cartesian(ylim=c(0,ac_profile_max_y))+
     scale_x_continuous(breaks = brakes_vector, labels=c("0", "6", "8", "12", "18", "20"))+
     theme_bw()+
     scale_colour_manual(values=colors)+
-    theme(legend.text=element_text(size=14))+
-    theme(legend.title = element_text(size=18))+
+    theme(legend.text=element_text(size=10))+
+    theme(legend.title = element_text(size=14))+
     theme(axis.text.x=element_text(hjust=0.5, size=20))+
     theme(axis.text.y=element_text(size=20))+
     theme(axis.title = element_text(size=18))+
@@ -231,9 +232,60 @@ plot_activity <- function(d, title_, lull_period, shift){
     guides(colour = guide_legend(override.aes = list(size=1)))+ (   #edits the point size in a legend
       if (display_error_bars == "Yes")(
         geom_errorbar(aes(ymax=30*(binned_mean + binned_sem),ymin=30*(binned_mean - binned_sem)), width=0.3)
-      ))
+      ))+
+    coord_cartesian(xlim = c(0, 1440), ylim = c(0, ac_profile_max_y), expand = FALSE)
   
-  print(p)
+  # Define the AP phase data as a simple data frame
+  ap_df <- data.frame(
+    xmin = c(vlines[1], vlines[2], vlines[3], vlines[4]),
+    xmax = c(vlines[2], vlines[3], vlines[4], 1440),
+    label = c("AP1", "AP3", "AP2", "Inactive")
+  )
+  
+  # Create the top annotation strip
+  ap_plot <- ggplot(ap_df) +
+    # Draw rectangles for each AP phase over the full vertical range (0 to 1)
+    geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 0.1, fill = label), alpha = 0.3) +
+    # Place the text labels at the center of each rectangle
+    geom_text(aes(x = (xmin + xmax) / 2, y = 0.05, label = label), size = 4) +
+    scale_x_continuous(limits = c(0, 1440), expand = c(0, 0)) +
+    theme_void() +                      # Remove axes and background
+    theme(legend.position = "none")+
+    scale_fill_manual(values = c("AP1" = "white", "AP2" = "white", "AP3" = "grey60", "Inactive" = "gray60"))
+  
+  
+  # Define the light phase data
+  lights_df <- data.frame(
+    xmin = c(0, (480+shift) %% 1440, (1200+shift) %% 1440),
+    xmax = c((480+shift) %% 1440, (1200+shift) %% 1440, 1400),
+    label = c("", "Lights on", "Lights off")
+  )
+  
+  # Create the bottom annotation strip
+  lights_plot <- ggplot(lights_df) +
+    geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = label), alpha = 0.3) +
+    geom_text(aes(x = (xmin + xmax) / 2, y = 0.5, label = label), size = 4) +
+    scale_x_continuous(limits = c(0, 1440), expand = c(0, 0)) +
+    theme_void() +
+    theme(legend.position = "none")
+  
+  combined_plot <- (
+    ap_plot /
+      p /
+      lights_plot
+  ) +
+    plot_layout(
+      ncol = 1,
+      heights = c(0.1, 1, 0.1)  # top strip = 0.1, main = 1, bottom = 0.1
+    ) +
+    plot_annotation(
+      title = "My Overall Title for the Figure",  # choose your desired text
+      theme = theme(
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+      )
+    )
+  
+  print(combined_plot)
 }
 ```
 
@@ -260,6 +312,93 @@ for (i in seq(4)){
 }
 
 ```
+
+```{r}
+breaks <- c((360+shift) %% 1440, (630+shift) %% 1440, (870+shift) %% 1440, (1320+shift) %% 1440, 1440)
+
+# Define the AP phase data as a simple data frame
+ap_df <- data.frame(
+  xmin = c(breaks[1], breaks[2], breaks[3], breaks[4]),
+  xmax = c(breaks[2], breaks[3], breaks[4], 1440),
+  label = c("AP1", "AP3", "AP2", "Inactive")
+)
+
+# Create the top annotation strip
+ap_plot <- ggplot(ap_df) +
+  # Draw rectangles for each AP phase over the full vertical range (0 to 1)
+  geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 0.1, fill = label), alpha = 0.3) +
+  # Place the text labels at the center of each rectangle
+  geom_text(aes(x = (xmin + xmax) / 2, y = 0.05, label = label), size = 4) +
+  scale_x_continuous(limits = c(0, 1440), expand = c(0, 0)) +
+  theme_void() +                      # Remove axes and background
+  theme(legend.position = "none")
+
+
+# Define the light phase data
+lights_df <- data.frame(
+  xmin = c(0, 720),
+  xmax = c(720, 1440),
+  label = c("Lights On", "Lights Off")
+)
+
+# Create the bottom annotation strip
+lights_plot <- ggplot(lights_df) +
+  geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = label), alpha = 0.3) +
+  geom_text(aes(x = (xmin + xmax) / 2, y = 0.5, label = label), size = 4) +
+  scale_x_continuous(limits = c(0, 1440), expand = c(0, 0)) +
+  theme_void() +
+  theme(legend.position = "none")
+
+d <- binning(analysis_list[[1]])
+title_ <- title_list[1]
+ac_profile_max_y <- 65
+colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
+
+# Assume your data 'd' has a 'shifted_time' that runs from 0 to 1440 and 'binned_mean', etc.
+main_plot <- ggplot(d, aes(x = shifted_time, y = binned_mean, colour = Condition)) +
+  geom_line(linewidth = 1.5) +
+  # If you want error bars, include them here (using your conditional code as needed)
+  # geom_errorbar(aes(ymin= binned_mean - binned_sem, ymax = binned_mean + binned_sem), width = 0.3) +
+  #labs(title = title_, x = "Time of the day [min]",
+      # y = "Average counts per 30 min") +
+  coord_cartesian(ylim = c(0, ac_profile_max_y)) +
+  scale_x_continuous(limits = c(0, 1440),
+                     breaks = c(0, 360, 720, 1080, 1440),
+                     labels = c("0", "6", "12", "18", "24")) +
+  theme_bw() +
+  scale_colour_manual(values = colors) +
+  theme(legend.text = element_text(size = 10),
+        legend.title = element_text(size = 14),
+        axis.text.x = element_text(hjust = 0.5, size = 20),
+        axis.text.y = element_text(size = 20),
+        axis.title = element_text(size = 18),
+        plot.title = element_text(size = 20, hjust = -0.3, face = "bold")) +
+  guides(colour = guide_legend(override.aes = list(size = 1)))
+
+library(patchwork)
+
+combined_plot <- (
+  ap_plot /
+  main_plot /
+  lights_plot
+) +
+plot_layout(
+  ncol = 1,
+  heights = c(0.1, 1, 0.1)  # top strip = 0.1, main = 1, bottom = 0.1
+) +
+plot_annotation(
+  title = "My Overall Title for the Figure",  # choose your desired text
+  theme = theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
+  )
+)
+
+print(combined_plot)
+
+```
+
+
+
 
 ```{r}
 plot_activity2 <- function(d, title_){
@@ -298,14 +437,16 @@ plot_activity2 <- function(d, title_){
 # Activity Period Analysis
 ```{r}
 # Define the breakpoints
-breaks <- c((360+shift) %% 1440, (630+shift) %% 1440, (870+shift) %% 1440, (1320+shift) %% 1440, 1440)
+lull_period <- list((c(630, 870)+shift) %% 1440, (c(720, 960)+shift) %% 1440, (c(630, 870)+shift) %% 1440, (c(720, 960)+shift) %% 1440)
 
-# Apply the slicing to each dataframe in the list
-sliced_lists <- lapply(analysis_list, function(df) {
-  lapply(1:(length(breaks) - 1), function(i) {
+#breaks <- c((360+shift) %% 1440, (630+shift) %% 1440, (870+shift) %% 1440, (1320+shift) %% 1440, 1440)
+
+sliced_lists <- Map(function(df, k) {
+  breaks <- c((360 + shift) %% 1440, lull_period[[k]], (1320 + shift) %% 1440, 1440)
+  lapply(1:4, function(i) {
     df[df$shifted_time >= breaks[i] & df$shifted_time < breaks[i + 1], ]
   })
-})
+}, analysis_list, seq_along(analysis_list))
 
 ```
 
@@ -459,11 +600,11 @@ p + bracket_helper(0.7, 0.85, "***")+
   bracket_helper(0.7, 1, "***", T)+
   
   bracket_helper(1.7, 0.8, "***")+
-  bracket_helper(2, 0.85, "***")+
+  bracket_helper(2, 0.85, "ns", size = 4)+
   bracket_helper(1.7, 0.95, "***", T)+
   
   bracket_helper(2.7, 0.8, "***")+
-  bracket_helper(3, 0.85, "*")+
+  bracket_helper(3, 0.85, "ns", size = 4)+
   bracket_helper(2.7, 0.95, "***", T)+
  
   bracket_helper(3.7, 0.15, "***")+
@@ -502,7 +643,7 @@ p + bracket_helper(0.7, 0.6, "***")+
   bracket_helper(1, 0.85, "***")+
   bracket_helper(0.7, 0.95, "***", T)+
   
-  bracket_helper(1.7, 0.45, "ns", size = 4)+
+  bracket_helper(1.7, 0.45, "**")+
   bracket_helper(2, 0.75, "***")+
   bracket_helper(1.7, 0.85, "***", T)+
   
