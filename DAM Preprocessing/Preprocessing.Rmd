@@ -246,9 +246,9 @@ lull_period <- list((c(630, 870)+shift) %% 1440, (c(720, 960)+shift) %% 1440, (c
 analysis_list_binned <- list()
 
 
-for (i in seq(4)){
-  analysis_list_binned[[i]] <- binning(analysis_list[[i]])
-}
+# for (i in seq(4)){
+#   analysis_list_binned[[i]] <- binning(analysis_list[[i]])
+# }
 
 for (i in seq(4)){
   analysis_list[[i]]$shifted_time <- (analysis_list[[i]]$Dec_time + shift) %% 1440
@@ -310,12 +310,12 @@ sliced_lists <- lapply(analysis_list, function(df) {
 ```
 
 ```{r}
-for (i in seq(4)){
-  for (j in seq(4)){
-    plot_activity2(binning(sliced_lists[[i]][[j]]), paste("Average Activity Profiles for", 
-                                                          title_list[i]))
-  }
-}
+# for (i in seq(4)){
+#   for (j in seq(4)){
+#     plot_activity2(binning(sliced_lists[[i]][[j]]), paste("Average Activity Profiles for", 
+#                                                           title_list[i]))
+#   }
+# }
 ```
 
 
@@ -357,15 +357,428 @@ plot_list[[3]]
 plot_list[[4]]
 
 ```
+
+# GGpubr
 ```{r}
-for (i in seq(4)){
-  ano <- aov(data = sliced_lists[[1]][[i]], mean~Dec_time + factor(Condition))
-  print(summary(ano))
+library(ggplot2)
+library(ggpubr)  # install.packages("ggpubr") if you don't have it
+
+# Suppose df_combined looks something like this:
+# Each row is one measurement with columns: AP (AP1, AP2, etc.), Condition, and mean
+# You are using stat_summary(fun = mean) to get the bar heights.
+
+# For demonstration:
+df_combined <- data.frame(
+  AP        = rep(c("AP1", "AP2", "AP3", "Inactive"), each=2),
+  Condition = rep(c("Black", "Red"), 4),
+  mean      = c(0.9, 1.2, 0.7, 0.9, 1.1, 0.6, 0.2, 0.15)
+)
+
+# Step 1: Base plot (as you had)
+p <- ggplot(df_combined, aes(x = AP, y = mean, fill = Condition)) +
+  stat_summary(fun = mean, geom = "bar", position = position_dodge()) +
+  stat_summary(fun.data = mean_se, geom = "errorbar",
+               position = position_dodge(width = 0.9), width = 0.2) +
+  labs(title = "Mean Activity Periods",
+       x = "Activity Period", y = "Mean Activity") +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14))
+
+# Step 2: Make a small data frame with p-values, the groups being compared,
+#         and the x-axis location (AP). 
+#         'group1' and 'group2' must match your 'Condition' factor levels.
+#         'x' (or 'xmin'/'xmax') can be used to position bracket if needed.
+#         'y.position' is the vertical height for the bracket. 
+#         'p' is your p-value, or 'p.signif' if you want to store asterisks.
+#         For multiple pairs, just add more rows.
+
+stat_data <- data.frame(
+  AP        = c("AP1", "AP2", "AP3", "Inactive"),   # each row is one bracket
+  group1    = rep("Black", 4),
+  group2    = rep("Red",    4),
+  p         = c(0.02, 0.0005, 0.04, 0.1),            # your p-values
+  y.position= c(1.35, 1.05, 1.25, 0.35),              # pick heights above bars
+  xmin       = c("AP1", "AP2", "AP3", "Inactive"),
+  xmax       = c("AP1", "AP2", "AP3", "Inactive")
+)
+
+# Step 3: Add significance brackets
+stat_data$Condition <- factor("Black", levels = c("Black", "Red"))
+stat_data$p.signif <- c("*", "***", "*", "ns")
+
+p + stat_pvalue_manual(
+  data = stat_data,
+  label = "p.signif",
+  xmin = "group1",
+  xmax = "group2",
+  x = "AP",
+  y.position = "y.position",
+  tip.length = 0.02,
+  bracket.size = 0.5,
+  size = 4
+)
+
+```
+
+```{r}
+p <- ggplot(df_combined, aes(x = AP, y = mean, fill = Condition)) +
+  stat_summary(fun = mean, geom = "bar", position = position_dodge()) +
+  stat_summary(fun.data = mean_se, geom = "errorbar",
+               position = position_dodge(width = 0.9), width = 0.2) +
+  labs(title = paste("Mean Activity Periods for", title_list[i]),
+       x = "Activity Period", y = "Mean Activity") +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14)) +
+  theme_minimal()
+
+p + stat_pvalue_manual(
+  data = comparisons_df,
+  inherit.aes = FALSE,
+  x = "AP",                # Use the AP factor as the x-axis variable
+  #group = "Condition",     # This tells ggpubr the comparisons are between the Condition groups
+  label = "p.signif",         # The column containing your p-values
+  position = position_dodge(width = 0.9),  # Align brackets with the dodged bars
+  tip.length = 0.02        # Adjust the bracket tip length if needed
+)
+
+```
+
+```{r}
+c_wt_het <- condition_p[["P-L Female"]][["WT vs Het"]]
+c_wt_homo <- condition_p[["P-L Female"]][["WT vs Homo"]]
+c_het_homo <- condition_p[["P-L Female"]][["Homo vs Het"]]
+
+comparisons_df <- data.frame(
+  AP = rep(c("AP1", "AP2", "AP3", "AP4"), each = 3),
+  group1 = rep(c("WT Female", "WT Female", "P-L Het Female"), times = 4),
+  group2 = rep(c("P-L Het Female", "P-L Homo Female", "P-L Homo Female"), times = 4),
+  Condition = rep(c("P-L Het Female", "P-L Homo Female", "WT Female"), times = 4),
+  p.adj = c(c_wt_het[[1]], c_wt_homo[[1]], c_het_homo[[1]],  # AP1 comparisons
+            c_wt_het[[2]], c_wt_homo[[2]], c_het_homo[[2]],  # AP2 comparisons
+            c_wt_het[[3]], c_wt_homo[[3]], c_het_homo[[3]],  # AP3 comparisons
+            c_wt_het[[4]], c_wt_homo[[4]], c_het_homo[[4]]), # AP4 comparisons
+  p.signif = rep("***", time = 12),
+  y.position = c(0.72, 0.78, 0.84,   # Adjust these values per AP so brackets don't overlap with bars
+                 0.72, 0.78, 0.84,
+                 0.72, 0.78, 0.84,
+                 0.72, 0.78, 0.84)
+)
+
+```
+
+```{r}
+# Add bracket lines and labels manually
+bracket_data <- data.frame(
+  xstart = c(0.8, 1.8, 2.8, 3.8),     # approx location for bar groups
+  xend   = c(1.2, 2.2, 3.2, 4.2),
+  y      = c(1.3, 1.0, 1.2, 0.32),
+  label  = c("*", "***", "*", "ns")
+)
+
+p + 
+  geom_segment(data = bracket_data, 
+               aes(x = xstart, xend = xend, y = y, yend = y), 
+               inherit.aes = FALSE) +
+  geom_text(data = bracket_data,
+            aes(x = (xstart + xend)/2, y = y + 0.05, label = label),
+            size = 4,
+            inherit.aes = FALSE)
+
+```
+
+```{r}
+p <- ggplot(df_combined, aes(x = AP, y = mean, fill = Condition)) +
+  stat_summary(fun = mean, geom = "bar", position = position_dodge()) +
+  stat_summary(fun.data = mean_se, geom = "errorbar",
+               position = position_dodge(width = 0.9), width = 0.2) +
+  labs(title = paste("Mean Activity Periods for", title_list[i]),
+       x = "Activity Period", y = "Mean Activity") +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14)) +
+  theme_minimal()
+
+bracket_data <- data.frame(
+  xstart = c(0.5, 1.8, 2.8, 3.8),  # ~ Black bars (adjust if dodge changes)
+  xend   = c(0.8, 2.2, 3.2, 4.2),  # ~ Red bars
+  y      = c(0.6, 1.05, 1.25, 0.35),  # just above tallest bar
+  label  = c("*", "***", "*", "ns")
+)
+
+# Add brackets and labels manually
+p + 
+  geom_segment(data = bracket_data,
+               aes(x = xstart, xend = xend, y = y, yend = y),
+               inherit.aes = FALSE, size = 0.6) +
+  geom_text(data = bracket_data,
+            aes(x = (xstart + xend)/2, y = y + 0.05, label = label),
+            inherit.aes = FALSE, size = 4)
+```
+
+# Semimanual brackets
+```{r}
+# Significance labels
+# sig_labels <- data.frame(
+#   AP     = c("AP1", "AP2", "AP3", "AP4"),
+#   label  = c("*", "***", "*", "ns"),
+#   y_offset = c(0.15, 0.1, 0.15, 0.05)  # how high above the tallest bar to place it
+# )
+
+sig_labels <- data.frame(
+  AP = rep(c("AP1", "AP2", "AP3", "AP4"), each = 3),
+  p.signif = rep("***", time = 12),
+  y_offset = c(0.72, 0.78, 0.84,
+                 0.72, 0.78, 0.84,
+                 0.72, 0.78, 0.84,
+                 0.72, 0.78, 0.84)
+)
+
+# Compute xstart/xend based on position in factor levels and number of groups
+conditions <- levels(factor(df_combined$Condition))
+n_groups <- length(conditions)
+dodge_width <- 0.9
+group_width <- dodge_width / n_groups
+
+# Map factor levels to numeric positions
+df_combined <- df_combined %>%
+  mutate(
+    AP_num = as.numeric(factor(AP, levels = unique(AP))),
+    Condition_num = as.numeric(factor(Condition, levels = conditions)),
+    xpos = AP_num + (Condition_num - 1.5) * group_width  # center offset: -0.5 * group_width, +0.5
+  )
+
+# Get max bar heights per AP for positioning brackets
+height_data <- df_combined %>%
+  group_by(AP) %>%
+  summarise(y = max(mean)) %>%
+  left_join(sig_labels, by = "AP") %>%
+  mutate(y = y + y_offset)
+
+# Join positions
+bracket_data <- height_data %>%
+  left_join(
+    df_combined %>% filter(Condition == conditions[1]) %>% select(AP, xstart = xpos),
+    by = "AP"
+  ) %>%
+  left_join(
+    df_combined %>% filter(Condition == conditions[2]) %>% select(AP, xend = xpos),
+    by = "AP"
+  )
+
+# Plot
+p <- ggplot(df_combined, aes(x = AP, y = mean, fill = Condition)) +
+  stat_summary(fun = mean, geom = "bar", position = position_dodge(width = dodge_width)) +
+  stat_summary(fun.data = mean_se, geom = "errorbar",
+               position = position_dodge(width = dodge_width), width = 0.2) +
+  labs(title = "Mean Activity Periods",
+       x = "Activity Period", y = "Mean Activity") +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14))
+
+# Add brackets and labels
+p + 
+  geom_segment(data = bracket_data,
+               aes(x = xstart, xend = xend, y = y, yend = y),
+               inherit.aes = FALSE, size = 0.6) +
+  geom_text(data = bracket_data,
+            aes(x = (xstart + xend)/2, y = y + 0.03, label = label),
+            inherit.aes = FALSE, size = 4)
+
+
+p
+```
+```{r}
+p <- ggplot(df_combined, aes(x = AP, y = mean, fill = Condition)) +
+  stat_summary(fun = mean, geom = "bar", position = position_dodge(width = dodge_width)) +
+  stat_summary(fun.data = mean_se, geom = "errorbar",
+               position = position_dodge(width = dodge_width), width = 0.2) +
+  labs(title = "Mean Activity Periods",
+       x = "Activity Period", y = "Mean Activity") +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14))
+
+
+
+p +
+  # Horizontal bracket line
+  geom_segment(aes(x = 0.8, y = 1.0, xend = 1.2, yend = 1.0)) +
+  # Vertical ticks on each end
+  geom_segment(aes(x = 0.8, y = 1.0, xend = 0.8, yend = 0.95)) +
+  geom_segment(aes(x = 1.2, y = 1.0, xend = 1.2, yend = 0.95)) +
+  # Significance annotation
+  annotate("text", x = 1.0, y = 1.05, label = "*", size = 6)
+
+
+```
+```{r}
+# Load required packages
+library(ggplot2)
+library(dplyr)
+library(purrr)
+
+# Example parameter for dodge width (you already defined it)
+dodge_width <- 0.9
+
+## STEP 1. Compute summary statistics per bar
+# We compute the mean, standard error, and “top” (mean + error) value.
+df_summary <- df_combined %>%
+  group_by(AP, Condition) %>%
+  summarise(
+    mean_val = mean(mean),
+    se_val   = sd(mean) / sqrt(n()),
+    .groups  = "drop"
+  ) %>%
+  mutate(y_top = mean_val + se_val)
+
+## STEP 2. Compute adjusted x positions for each bar (taking dodge into account)
+# We assume AP is a factor that is internally mapped to numeric values (1,2,...).
+# For each AP, each Condition bar is shifted by an offset.
+levels_cond <- levels(factor(df_combined$Condition))
+n_conditions <- length(levels_cond)
+# Create offsets evenly spaced across the dodge_width:
+offsets <- seq(-dodge_width/2, dodge_width/2, length.out = n_conditions)
+df_offsets <- data.frame(Condition = levels_cond, x_offset = offsets)
+
+# Merge offsets with the summary statistics and compute a new x value
+df_summary <- df_summary %>%
+  left_join(df_offsets, by = "Condition") %>%
+  # as.numeric(factor(AP)) converts AP (assumed factor) to its numeric position.
+  mutate(x = as.numeric(factor(AP)) + x_offset)
+
+## STEP 3. Build the base ggplot with dodged bars
+p <- ggplot(df_combined, aes(x = AP, y = mean, fill = Condition)) +
+  stat_summary(fun = mean, geom = "bar", position = position_dodge(width = dodge_width),
+               width = 0.8) +
+  stat_summary(fun.data = mean_se, geom = "errorbar",
+               position = position_dodge(width = dodge_width), width = 0.2) +
+  labs(title = "Mean Activity Periods", x = "Activity Period", y = "Mean Activity") +
+  theme_minimal() +
+  theme(axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14))
+
+## STEP 4. Specify the comparisons
+# For each comparison, specify:
+# - the AP level (x group),
+# - the two Condition groups to compare,
+# - and the significance label to add.
+# In this example, we assume one AP value ("AP1"). If you have multiple, you can add rows accordingly.
+comparisons <- data.frame(
+  AP     = c("AP1", "AP1", "AP1"),
+  group1 = c("P-L Het Female", "P-L Het Female", "P-L Homo Female"),
+  group2 = c("P-L Homo Female", "WT Female",        "WT Female"),
+  label  = c("*",             "**",               "*"),
+  stringsAsFactors = FALSE
+)
+
+## STEP 5. Automatically compute positions for brackets
+# For each specified comparison, look up the x positions and top y values,
+# then set the bracket y position a little above the higher of the two.
+bracket_positions <- comparisons %>%
+  rowwise() %>%
+  mutate(
+    # Find x positions of each bar from df_summary (for the given AP and Condition)
+    x1 = df_summary$x[ df_summary$AP == AP & df_summary$Condition == group1 ],
+    x2 = df_summary$x[ df_summary$AP == AP & df_summary$Condition == group2 ],
+    # Get the top of each bar (mean + se)
+    y1 = df_summary$y_top[ df_summary$AP == AP & df_summary$Condition == group1 ],
+    y2 = df_summary$y_top[ df_summary$AP == AP & df_summary$Condition == group2 ],
+    # Set the bracket y position as a bit above the highest top.
+    # Here we add a gap equal to 5% of the overall range from min(mean) to max(y_top).
+    y  = max(y1, y2) + 0.05 * (max(df_summary$y_top) - min(df_summary$mean_val))
+  ) %>%
+  ungroup()
+
+## STEP 6. Add the manual brackets to the plot
+# Loop over each comparison and add:
+# - A horizontal line spanning the x-positions of the two bars.
+# - Two short vertical lines ("ticks") at each end.
+# - A text label (e.g. "*") above the bracket.
+for (i in 1:nrow(bracket_positions)) {
+  bp <- bracket_positions[i, ]
+  x_left <- min(bp$x1, bp$x2)
+  x_right <- max(bp$x1, bp$x2)
   
-  (Tuk <- TukeyHSD(ano, "factor(Condition)"))
-  plot(Tuk)
+  # You can adjust the tick length and text gap relative to the overall y-range:
+  tick_length <- 0.02 * (max(df_summary$y_top) - min(df_summary$mean_val))
+  text_gap    <- 0.01 * (max(df_summary$y_top) - min(df_summary$mean_val))
+  
+  p <- p +
+    # Horizontal line for the bracket
+    geom_segment(aes(x = x_left, xend = x_right, y = bp$y, yend = bp$y)) +
+    # Left vertical tick
+    geom_segment(aes(x = bp$x1, xend = bp$x1, y = bp$y, yend = bp$y - tick_length)) +
+    # Right vertical tick
+    geom_segment(aes(x = bp$x2, xend = bp$x2, y = bp$y, yend = bp$y - tick_length)) +
+    # Annotation label: placed above the horizontal line
+    annotate("text",
+             x = (x_left + x_right)/2,
+             y = bp$y + text_gap,
+             label = bp$label,
+             size = 5)
+}
+
+## Finally, display the plot
+print(p)
+
+```
+
+
+
+# Stats
+```{r warning=FALSE}
+ap_names <- c("AP 1", "AP 2", "AP 3", "Inactive")
+pair_names <- c("Homo vs Het", "WT vs Het", "WT vs Homo")
+homo_het_p <- list()
+wt_het_p <- list()
+wt_homo_p <- list()
+
+condition_p <- list()
+pair_list <- list()
+
+
+for (i in seq(4)){
+  for (j in seq(4)){
+    ano <- aov(data = sliced_lists[[i]][[j]], mean~Dec_time + factor(Condition))
+    #print(summary(ano))
+    
+    Tuk <- TukeyHSD(ano, "factor(Condition)")
+    #plot(Tuk)
+    #print(ap_names[j])
+    #print(Tuk)
+    
+    homo_het_p[[ ap_names[j] ]] <- Tuk[["factor(Condition)"]][10]
+    wt_het_p[[ ap_names[j] ]]   <- Tuk[["factor(Condition)"]][11]
+    wt_homo_p[[ ap_names[j] ]]  <- Tuk[["factor(Condition)"]][12]
+  }
+
+  pair_list[["Homo vs Het"]] <- homo_het_p
+  pair_list[["WT vs Het"]] <- wt_het_p
+  pair_list[["WT vs Homo"]] <- wt_homo_p
+  
+  condition_p[[ title_list[i] ]] <- pair_list
 }
 ```
+
+```{r}
+# Function to convert a p-value to a significance string
+p_to_stars <- function(p) {
+  if (p < 0.001) return("***")
+  else if (p < 0.01) return("**")
+  else if (p < 0.05) return("*")
+  else return("")
+}
+
+# Apply to the 3-level nested list
+condition_stars <- lapply(condition_p, function(level1) {
+  lapply(level1, function(level2) {
+    lapply(level2, p_to_stars)
+  })
+})
+
+```
+
 
 # Boxplots
 ```{r}
