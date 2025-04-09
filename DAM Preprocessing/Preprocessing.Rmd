@@ -205,7 +205,11 @@ binning <- function(df){
 
 ```{r}
 plot_activity <- function(d, title_, lull_period, shift){
-  brakes_vector <- c((0+shift) %% 1440, (360+shift) %% 1440, (480+shift) %% 1440, (720+shift) %% 1440, (1080+shift) %% 1440, (1200+shift) %% 1440)
+  #brakes_vector <- c((0+shift) %% 1440, (360+shift) %% 1440, (480+shift) %% 1440, (720+shift) %% 1440, (1080+shift) %% 1440, (1200+shift) %% 1440)
+  
+  brakes_vector <- c((360+shift) %% 1440, (480+shift) %% 1440, (600+shift) %% 1440, (720+shift) %% 1440, 
+                     (840+shift) %% 1440, (960+shift) %% 1440, (1080+shift) %% 1440, (1200+shift) %% 1440,
+                     (1320+shift) %% 1440, (1440+shift) %% 1440, (120+shift) %% 1440, (240+shift) %% 1440)
   
   vlines <- c((360+shift) %% 1440, lull_period[1], lull_period[2], (1320+shift) %% 1440)
   
@@ -217,16 +221,18 @@ plot_activity <- function(d, title_, lull_period, shift){
     geom_line(linewidth = 1.5)+
     #geom_point(color = "black", size = 0.6)+
     geom_vline(xintercept = vlines)+
-    labs(title= title_, x= "Time of the day [H]",
+    labs(
          y = "Average counts per 30 min")+
-    scale_x_continuous(breaks = brakes_vector, labels=c("0", "6", "8", "12", "18", "20"))+
+    scale_x_continuous(breaks = brakes_vector, labels=c("6", "8", "10", "12", "14", "16", "18", "20", "22", "0",
+                                                        "2", "4"))+
     theme_bw()+
     scale_colour_manual(values=colors)+
     theme(legend.text=element_text(size=10))+
     theme(legend.title = element_text(size=14))+
-    theme(axis.text.x=element_text(hjust=0.5, size=20))+
-    theme(axis.text.y=element_text(size=20))+
+    theme(axis.text.x=element_text(hjust=0.5, size=15))+
+    theme(axis.text.y=element_text(size=15))+
     theme(axis.title = element_text(size=18))+
+    theme(axis.title.x = element_blank())+
     theme(plot.title = element_text(size=20, hjust=-0.3, face="bold"))+
     guides(color = "none")+
     guides(colour = guide_legend(override.aes = list(size=1)))+ (   #edits the point size in a legend
@@ -239,35 +245,38 @@ plot_activity <- function(d, title_, lull_period, shift){
   ap_df <- data.frame(
     xmin = c(vlines[1], vlines[2], vlines[3], vlines[4]),
     xmax = c(vlines[2], vlines[3], vlines[4], 1440),
-    label = c("AP1", "AP3", "AP2", "Inactive")
+    label = c("AP 1", "AP 3", "AP 2", "Inactive")
   )
   
   # Create the top annotation strip
   ap_plot <- ggplot(ap_df) +
     # Draw rectangles for each AP phase over the full vertical range (0 to 1)
-    geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 0.1, fill = label), alpha = 0.3) +
+    geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 0.1, fill = label), alpha = 0.3, color = "black") +
     # Place the text labels at the center of each rectangle
     geom_text(aes(x = (xmin + xmax) / 2, y = 0.05, label = label), size = 4) +
     scale_x_continuous(limits = c(0, 1440), expand = c(0, 0)) +
     theme_void() +                      # Remove axes and background
     theme(legend.position = "none")+
-    scale_fill_manual(values = c("AP1" = "white", "AP2" = "white", "AP3" = "grey60", "Inactive" = "gray60"))
+    scale_fill_manual(values = c("AP 1" = "white", "AP 2" = "white", "AP 3" = "grey60", "Inactive" = "gray60"))
   
   
   # Define the light phase data
   lights_df <- data.frame(
     xmin = c(0, (480+shift) %% 1440, (1200+shift) %% 1440),
     xmax = c((480+shift) %% 1440, (1200+shift) %% 1440, 1400),
-    label = c("", "Lights on", "Lights off")
+    label = c(" ", "Lights On", "Lights Off")
   )
   
   # Create the bottom annotation strip
   lights_plot <- ggplot(lights_df) +
-    geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = label), alpha = 0.3) +
+    geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = label), alpha = 0.3, color = "black") +
     geom_text(aes(x = (xmin + xmax) / 2, y = 0.5, label = label), size = 4) +
     scale_x_continuous(limits = c(0, 1440), expand = c(0, 0)) +
     theme_void() +
-    theme(legend.position = "none")
+    theme(legend.position = "none")+
+    scale_fill_manual(values = c(" " = "grey60", "Lights On" = "white", "Lights Off" = "grey60"))+
+    labs(x= "Time of the day [H]")+
+    theme(axis.title.x = element_text(size=18))
   
   combined_plot <- (
     ap_plot /
@@ -279,7 +288,7 @@ plot_activity <- function(d, title_, lull_period, shift){
       heights = c(0.1, 1, 0.1)  # top strip = 0.1, main = 1, bottom = 0.1
     ) +
     plot_annotation(
-      title = "My Overall Title for the Figure",  # choose your desired text
+      title = title_,  # choose your desired text
       theme = theme(
         plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
       )
