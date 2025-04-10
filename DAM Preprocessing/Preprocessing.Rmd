@@ -220,7 +220,7 @@ plot_activity <- function(d, title_, lull_period, shift){
   p<- plots_activity_30_min <-  ggplot(d, aes(shifted_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
     geom_line(linewidth = 1.5)+
     #geom_point(color = "black", size = 0.6)+
-    geom_vline(xintercept = vlines)+
+    #geom_vline(xintercept = vlines)+
     labs(
          y = "Average counts per 30 min")+
     scale_x_continuous(breaks = brakes_vector, labels=c("6", "8", "10", "12", "14", "16", "18", "20", "22", "0",
@@ -321,92 +321,6 @@ for (i in seq(4)){
 }
 
 ```
-
-```{r}
-breaks <- c((360+shift) %% 1440, (630+shift) %% 1440, (870+shift) %% 1440, (1320+shift) %% 1440, 1440)
-
-# Define the AP phase data as a simple data frame
-ap_df <- data.frame(
-  xmin = c(breaks[1], breaks[2], breaks[3], breaks[4]),
-  xmax = c(breaks[2], breaks[3], breaks[4], 1440),
-  label = c("AP1", "AP3", "AP2", "Inactive")
-)
-
-# Create the top annotation strip
-ap_plot <- ggplot(ap_df) +
-  # Draw rectangles for each AP phase over the full vertical range (0 to 1)
-  geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 0.1, fill = label), alpha = 0.3) +
-  # Place the text labels at the center of each rectangle
-  geom_text(aes(x = (xmin + xmax) / 2, y = 0.05, label = label), size = 4) +
-  scale_x_continuous(limits = c(0, 1440), expand = c(0, 0)) +
-  theme_void() +                      # Remove axes and background
-  theme(legend.position = "none")
-
-
-# Define the light phase data
-lights_df <- data.frame(
-  xmin = c(0, 720),
-  xmax = c(720, 1440),
-  label = c("Lights On", "Lights Off")
-)
-
-# Create the bottom annotation strip
-lights_plot <- ggplot(lights_df) +
-  geom_rect(aes(xmin = xmin, xmax = xmax, ymin = 0, ymax = 1, fill = label), alpha = 0.3) +
-  geom_text(aes(x = (xmin + xmax) / 2, y = 0.5, label = label), size = 4) +
-  scale_x_continuous(limits = c(0, 1440), expand = c(0, 0)) +
-  theme_void() +
-  theme(legend.position = "none")
-
-d <- binning(analysis_list[[1]])
-title_ <- title_list[1]
-ac_profile_max_y <- 65
-colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
-
-# Assume your data 'd' has a 'shifted_time' that runs from 0 to 1440 and 'binned_mean', etc.
-main_plot <- ggplot(d, aes(x = shifted_time, y = binned_mean, colour = Condition)) +
-  geom_line(linewidth = 1.5) +
-  # If you want error bars, include them here (using your conditional code as needed)
-  # geom_errorbar(aes(ymin= binned_mean - binned_sem, ymax = binned_mean + binned_sem), width = 0.3) +
-  #labs(title = title_, x = "Time of the day [min]",
-      # y = "Average counts per 30 min") +
-  coord_cartesian(ylim = c(0, ac_profile_max_y)) +
-  scale_x_continuous(limits = c(0, 1440),
-                     breaks = c(0, 360, 720, 1080, 1440),
-                     labels = c("0", "6", "12", "18", "24")) +
-  theme_bw() +
-  scale_colour_manual(values = colors) +
-  theme(legend.text = element_text(size = 10),
-        legend.title = element_text(size = 14),
-        axis.text.x = element_text(hjust = 0.5, size = 20),
-        axis.text.y = element_text(size = 20),
-        axis.title = element_text(size = 18),
-        plot.title = element_text(size = 20, hjust = -0.3, face = "bold")) +
-  guides(colour = guide_legend(override.aes = list(size = 1)))
-
-library(patchwork)
-
-combined_plot <- (
-  ap_plot /
-  main_plot /
-  lights_plot
-) +
-plot_layout(
-  ncol = 1,
-  heights = c(0.1, 1, 0.1)  # top strip = 0.1, main = 1, bottom = 0.1
-) +
-plot_annotation(
-  title = "My Overall Title for the Figure",  # choose your desired text
-  theme = theme(
-    plot.title = element_text(size = 16, face = "bold", hjust = 0.5)
-  )
-)
-
-print(combined_plot)
-
-```
-
-
 
 
 ```{r}
@@ -559,7 +473,13 @@ bracket_helper <- function(x_left, y, star, double = F, size = 6){
 
 ## Barplot function
 ```{r}
-bar_plot <- function(i){
+bar_plot <- function(i, geno, gender){
+  
+  condition_sliced_list[[i]]$Condition <- forcats::fct_relevel(condition_sliced_list[[i]]$Condition, 
+                                                              paste("WT", gender), paste(geno, "Het", gender), 
+                                                              paste(geno, "Homo", gender))
+  colors <- c("#000000", "#E0CB02", "#21918c", "#BBBBBB")
+  
   p <- ggplot(condition_sliced_list[[i]], aes(x = AP, y = mean, fill = Condition)) +
     stat_summary(fun = mean, geom = "bar", position = position_dodge(width = dodge_width)) +
     stat_summary(fun.data = mean_se, geom = "errorbar",
@@ -580,89 +500,89 @@ bar_plot <- function(i){
 
 ## D1E Male
 ```{r}
-p <- bar_plot(1)
+p <- bar_plot(1, "D1E", "Male")
 
 
-p + bracket_helper(0.7, 0.8, "***")+
-  bracket_helper(1, 1.05, "***")+
-  bracket_helper(0.7, 1.15, "***", T)+
+p + bracket_helper(1, 0.81, "***")+
+  bracket_helper(0.7, 1.13, "***", T)+
+  bracket_helper(0.7, 1.03, "***", F)+
   
-  bracket_helper(1.7, 0.45, "***")+
-  bracket_helper(2, 0.75, "***")+
-  bracket_helper(1.7, 0.85, "***", T)+
+  bracket_helper(2, 0.45, "***")+
+  bracket_helper(1.7, 0.83, "***", T)+
+  bracket_helper(1.7, 0.73, "***", F)+
   
-  bracket_helper(2.7, 0.95, "***")+
-  bracket_helper(3, 1.1, "***")+
+  bracket_helper(3, 0.93, "***")+
   bracket_helper(2.7, 1.2, "***", T)+
+  bracket_helper(2.7, 1.1, "***", F)+
   
-  bracket_helper(3.7, 0.35, "***")+
-  bracket_helper(4, 0.4, "***")+
-  bracket_helper(3.7, 0.5, "***", T)
+  bracket_helper(4, 0.37, "***")+
+  bracket_helper(3.7, 0.52, "***", T)+
+  bracket_helper(3.7, 0.42, "***", F)
 
 ```
 ## D1E Female
 ```{r}
-p <- bar_plot(2)
+p <- bar_plot(2, "D1E", "Female")
 
-p + bracket_helper(0.7, 0.85, "***")+
-  bracket_helper(1, 0.90, "ns", size = 4)+
-  bracket_helper(0.7, 1, "***", T)+
+p + bracket_helper(1, 0.86, "***")+
+  bracket_helper(0.7, 1.01, "ns", T, size = 4)+
+  bracket_helper(0.7, 0.92, "***", F)+
   
-  bracket_helper(1.7, 0.8, "***")+
-  bracket_helper(2, 0.85, "ns", size = 4)+
-  bracket_helper(1.7, 0.95, "***", T)+
+  bracket_helper(2, 0.68, "***")+
+  bracket_helper(1.7, 0.83, "ns", T, size = 4)+
+  bracket_helper(1.7, 0.73, "***", F)+
   
-  bracket_helper(2.7, 0.8, "***")+
-  bracket_helper(3, 0.85, "ns", size = 4)+
-  bracket_helper(2.7, 0.95, "***", T)+
+  bracket_helper(3, 0.85, "***")+
+  bracket_helper(2.7, 1.01, "ns", T, size = 4)+
+  bracket_helper(2.7, 0.92, "***", F)+
  
-  bracket_helper(3.7, 0.15, "***")+
-  bracket_helper(4, 0.2, "ns", size = 4)+
-  bracket_helper(3.7, 0.3, "***", T)
+  bracket_helper(4, 0.17, "***")+
+  bracket_helper(3.7, 0.32, "ns", T, size = 4)+
+  bracket_helper(3.7, 0.23, "***", F)
 
 
 ```
 ## P-L Male
 ```{r}
-p <- bar_plot(3)
+p <- bar_plot(3,  "P-L", "Male")
 
-p + bracket_helper(0.7, 0.7, "***")+
-  bracket_helper(1, 1.05, "***")+
-  bracket_helper(0.7, 1.15, "***", T)+
+p + bracket_helper(1, 0.7, "***")+
+  bracket_helper(0.7, 1.12, "***", T)+
+  bracket_helper(0.7, 1.02, "***", F)+
   
-  bracket_helper(1.7, 0.35, "ns", size = 4)+
-  bracket_helper(2, 0.75, "***")+
-  bracket_helper(1.7, 0.85, "***", T)+
+  bracket_helper(2, 0.35, "ns", size = 4)+
+  bracket_helper(1.7, 0.83, "***", T)+
+  bracket_helper(1.7, 0.73, "***", F)+
   
-  bracket_helper(2.7, 0.75, "***")+
-  bracket_helper(3, 1.1, "***")+
+  bracket_helper(3, 0.75, "***")+
   bracket_helper(2.7, 1.2, "***", T)+
+  bracket_helper(2.7, 1.1, "***", F)+
   
-  bracket_helper(3.7, 0.25, "***")+
-  bracket_helper(4, 0.45, "***")+
-  bracket_helper(3.7, 0.55, "***", T)
+  bracket_helper(4, 0.25, "***")+
+  bracket_helper(3.7, 0.53, "***", T)+
+  bracket_helper(3.7, 0.43, "***", F)
 
 ```
 
 ## P-L Female
 ```{r}
-p <- bar_plot(4)
+p <- bar_plot(4,  "P-L", "Female")
 
-p + bracket_helper(0.7, 0.6, "***")+
-  bracket_helper(1, 0.85, "***")+
+p + bracket_helper(1, 0.58, "***")+
   bracket_helper(0.7, 0.95, "***", T)+
+  bracket_helper(0.7, 0.85, "***", F)+
   
-  bracket_helper(1.7, 0.45, "**")+
-  bracket_helper(2, 0.75, "***")+
-  bracket_helper(1.7, 0.85, "***", T)+
+  bracket_helper(2, 0.42, "**")+
+  bracket_helper(1.7, 0.78, "***", T)+
+  bracket_helper(1.7, 0.68, "***", F)+
   
-  bracket_helper(2.7, 0.55, "ns", size = 4)+
-  bracket_helper(3, 0.85, "***")+
-  bracket_helper(2.7, 0.95, "***", T)+
+  bracket_helper(3, 0.58, "ns", size = 4)+
+  bracket_helper(2.7, 1.01, "***", T)+
+  bracket_helper(2.7, 0.91, "***", F)+
  
-  bracket_helper(3.7, 0.15, "***")+
-  bracket_helper(4, 0.2, "***")+
-  bracket_helper(3.7, 0.3, "**", T)
+  bracket_helper(4, 0.15, "***")+
+  bracket_helper(3.7, 0.3, "***", T)+
+  bracket_helper(3.7, 0.21, "**", F)
 
 
 ```
