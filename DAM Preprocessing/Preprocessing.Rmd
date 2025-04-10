@@ -204,8 +204,8 @@ binning <- function(df){
 ```
 
 ```{r}
-plot_activity <- function(d, title_, lull_period, shift){
-  #brakes_vector <- c((0+shift) %% 1440, (360+shift) %% 1440, (480+shift) %% 1440, (720+shift) %% 1440, (1080+shift) %% 1440, (1200+shift) %% 1440)
+plot_activity <- function(d, title_, lull_period, shift, individual = T){
+
   
   brakes_vector <- c((360+shift) %% 1440, (480+shift) %% 1440, (600+shift) %% 1440, (720+shift) %% 1440, 
                      (840+shift) %% 1440, (960+shift) %% 1440, (1080+shift) %% 1440, (1200+shift) %% 1440,
@@ -214,7 +214,8 @@ plot_activity <- function(d, title_, lull_period, shift){
   vlines <- c((360+shift) %% 1440, lull_period[1], lull_period[2], (1320+shift) %% 1440)
   
   ac_profile_max_y <- 65
-  colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
+  colors <- c("#000000", "#E0CB02", "#21918c", "#BBBBBB")
+  #colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
   display_error_bars <- FALSE
   
   p<- plots_activity_30_min <-  ggplot(d, aes(shifted_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
@@ -226,20 +227,21 @@ plot_activity <- function(d, title_, lull_period, shift){
     scale_x_continuous(breaks = brakes_vector, labels=c("6", "8", "10", "12", "14", "16", "18", "20", "22", "0",
                                                         "2", "4"))+
     theme_bw()+
-    scale_colour_manual(values=colors)+
+    scale_colour_manual(values=colors, labels = c("WT", "Het", "Homo"))+
+    #scale_colour_manual(values=colors, labels = c("Het", "Homo", "WT"))+
     theme(legend.text=element_text(size=10))+
     theme(legend.title = element_text(size=14))+
     theme(axis.text.x=element_text(hjust=0.5, size=15))+
     theme(axis.text.y=element_text(size=15))+
-    theme(axis.title = element_text(size=18))+
+    theme(axis.title = if (individual) element_text(size = 18) else element_blank())+
     theme(axis.title.x = element_blank())+
     theme(plot.title = element_text(size=20, hjust=-0.3, face="bold"))+
-    guides(color = "none")+
-    guides(colour = guide_legend(override.aes = list(size=1)))+ (   #edits the point size in a legend
-      if (display_error_bars == "Yes")(
+    guides(colour= if (individual) guide_legend(override.aes = list(size = 1)) else "none")+
+    (if (display_error_bars == "Yes")(
         geom_errorbar(aes(ymax=30*(binned_mean + binned_sem),ymin=30*(binned_mean - binned_sem)), width=0.3)
       ))+
     coord_cartesian(xlim = c(0, 1440), ylim = c(0, ac_profile_max_y), expand = FALSE)
+
   
   # Define the AP phase data as a simple data frame
   ap_df <- data.frame(
@@ -276,7 +278,7 @@ plot_activity <- function(d, title_, lull_period, shift){
     theme(legend.position = "none")+
     scale_fill_manual(values = c(" " = "grey60", "Lights On" = "white", "Lights Off" = "grey60"))+
     labs(x= "Time of the day [H]")+
-    theme(axis.title.x = element_text(size=18))
+    theme(axis.title.x = if (individual) element_text(size = 18) else element_blank())
   
   combined_plot <- (
     ap_plot /
@@ -295,6 +297,7 @@ plot_activity <- function(d, title_, lull_period, shift){
     )
   
   print(combined_plot)
+  return(combined_plot)
 }
 ```
 
@@ -305,7 +308,7 @@ title_list <- c("D1E Male", "D1E Female", "P-L Male", "P-L Female")
 shift <- -360
 lull_period <- list((c(630, 870)+shift) %% 1440, (c(720, 960)+shift) %% 1440, (c(630, 870)+shift) %% 1440, (c(720, 960)+shift) %% 1440)
 analysis_list_binned <- list()
-
+ts_plot_list <- list()
 
 for (i in seq(4)){
   analysis_list[[i]]$shifted_time <- (analysis_list[[i]]$Dec_time + shift) %% 1440
@@ -315,11 +318,25 @@ for (i in seq(4)){
   analysis_list_binned[[i]] <- binning(analysis_list[[i]])
 }
 
-for (i in seq(4)){
-  plot_activity(binning(analysis_list[[i]]), paste("Average Activity Profiles for", 
-                                                   title_list[i]), lull_period[[i]], shift)
-}
+library(cowplot)
 
+for (i in seq(4)){
+  ts_plot_list[[i]] <- ggdraw(plot_activity(binning(analysis_list[[i]]),  
+                                                   title_list[i], lull_period[[i]], shift, individual = T))
+}
+ggsave("plots/leg1.png", ts_plot_list[[1]], width = 12, height = 8, dpi = 300)
+```
+
+```{r}
+ts_mosaic <- (
+(ts_plot_list[[1]] | ts_plot_list[[2]]) /
+(ts_plot_list[[3]] | ts_plot_list[[4]])
+)
+
+
+ggsave("plots/ts_mosaic.png", ts_mosaic, width = 12, height = 8, dpi = 300)
+
+print(ts_mosaic)
 ```
 
 
@@ -447,8 +464,9 @@ for(i in seq_along(sliced_lists)) {
 ```{r}
 bracket_helper <- function(x_left, y, star, double = F, size = 6){
   
-  y_bracket <- y - 0.04
-  y_ano <- y + 0.03
+  y_bracket <- (y - 0.04)*30
+  y_ano <- (y + 0.03)*30
+  y <- 30*y
   
   if (double == T){
     x_right <- x_left + 0.6
@@ -480,18 +498,23 @@ bar_plot <- function(i, geno, gender){
                                                               paste(geno, "Homo", gender))
   colors <- c("#000000", "#E0CB02", "#21918c", "#BBBBBB")
   
-  p <- ggplot(condition_sliced_list[[i]], aes(x = AP, y = mean, fill = Condition)) +
+  p <- ggplot(condition_sliced_list[[i]], aes(x = AP, y = mean*30, fill = Condition)) +
     stat_summary(fun = mean, geom = "bar", position = position_dodge(width = dodge_width)) +
     stat_summary(fun.data = mean_se, geom = "errorbar",
                  position = position_dodge(width = dodge_width), width = 0.2) +
-    labs(title = paste("Mean Activity Periods for", title_list[i]),
-         x = "Activity Period", y = "Mean Activity") +
+    #labs(title = paste("Mean Activity Periods for", title_list[i]),
+       #  x = "Activity Period", y = "Mean Activity") +
+    labs(title = title_list[i])+
     theme_minimal() +
-    theme(axis.text = element_text(size = 12),
-          axis.title = element_text(size = 14))+
-    coord_cartesian(ylim = c(0, 1.25))+
-    scale_fill_manual(values=colors)+
-    scale_x_discrete(labels = c("AP 1", "AP 2", "AP 3", "Inactive"))
+    theme(plot.title = element_text(hjust=0.5, , face = "bold", size = 16),
+          axis.text = element_text(size = 15),
+          axis.title = element_blank())+
+    coord_cartesian(ylim = c(0, 1.25*30))+
+    scale_fill_manual(values=colors, labels = c("WT", "Het", "Homo"))+
+    scale_x_discrete(labels = c("AP 1", "AP 2", "AP 3", "Inactive"))+
+    theme(legend.text=element_text(size=10))+
+    theme(legend.title = element_text(size=14))#+
+    #guides(fill = "none")
   
   return(p)
 }
@@ -500,10 +523,13 @@ bar_plot <- function(i, geno, gender){
 
 ## D1E Male
 ```{r}
+bp_list <- list()
+
 p <- bar_plot(1, "D1E", "Male")
+ggsave("plots/leg2.png", p, width = 12, height = 8, dpi = 300)
 
 
-p + bracket_helper(1, 0.81, "***")+
+p <- p + bracket_helper(1, 0.81, "***")+
   bracket_helper(0.7, 1.13, "***", T)+
   bracket_helper(0.7, 1.03, "***", F)+
   
@@ -519,12 +545,13 @@ p + bracket_helper(1, 0.81, "***")+
   bracket_helper(3.7, 0.52, "***", T)+
   bracket_helper(3.7, 0.42, "***", F)
 
+bp_list[[1]] <- ggdraw(p)
 ```
 ## D1E Female
 ```{r}
 p <- bar_plot(2, "D1E", "Female")
 
-p + bracket_helper(1, 0.86, "***")+
+p <- p + bracket_helper(1, 0.86, "***")+
   bracket_helper(0.7, 1.01, "ns", T, size = 4)+
   bracket_helper(0.7, 0.92, "***", F)+
   
@@ -540,13 +567,13 @@ p + bracket_helper(1, 0.86, "***")+
   bracket_helper(3.7, 0.32, "ns", T, size = 4)+
   bracket_helper(3.7, 0.23, "***", F)
 
-
+bp_list[[2]] <- ggdraw(p)
 ```
 ## P-L Male
 ```{r}
 p <- bar_plot(3,  "P-L", "Male")
 
-p + bracket_helper(1, 0.7, "***")+
+p <- p + bracket_helper(1, 0.7, "***")+
   bracket_helper(0.7, 1.12, "***", T)+
   bracket_helper(0.7, 1.02, "***", F)+
   
@@ -562,13 +589,14 @@ p + bracket_helper(1, 0.7, "***")+
   bracket_helper(3.7, 0.53, "***", T)+
   bracket_helper(3.7, 0.43, "***", F)
 
+bp_list[[3]] <- ggdraw(p)
 ```
 
 ## P-L Female
 ```{r}
 p <- bar_plot(4,  "P-L", "Female")
 
-p + bracket_helper(1, 0.58, "***")+
+p <- p + bracket_helper(1, 0.58, "***")+
   bracket_helper(0.7, 0.95, "***", T)+
   bracket_helper(0.7, 0.85, "***", F)+
   
@@ -584,7 +612,16 @@ p + bracket_helper(1, 0.58, "***")+
   bracket_helper(3.7, 0.3, "***", T)+
   bracket_helper(3.7, 0.21, "**", F)
 
+bp_list[[4]] <- ggdraw(p)
+```
+```{r}
+bp_mosaic <- (
+(bp_list[[1]] | bp_list[[2]]) /
+(bp_list[[3]] | bp_list[[4]])
+)
 
+
+ggsave("plots/bp_mosaic.png", bp_mosaic, width = 12, height = 8, dpi = 300)
 ```
 
 
@@ -606,9 +643,6 @@ for (i in seq(4)){
     #print(summary(ano))
     
     Tuk <- TukeyHSD(ano, "factor(Condition)")
-    #plot(Tuk)
-    #print(ap_names[j])
-    #print(Tuk)
     
     homo_het_p[[ ap_names[j] ]] <- Tuk[["factor(Condition)"]][10]
     wt_het_p[[ ap_names[j] ]]   <- Tuk[["factor(Condition)"]][11]
