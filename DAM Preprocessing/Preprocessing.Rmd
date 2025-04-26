@@ -11,6 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(tidyverse)
 library(zoo)
+library(patchwork)
 ```
 
 #Loading
@@ -187,7 +188,7 @@ binning <- function(df){
   
   activity_per_condition_1 <- {
     d <- data.frame(activity_per_condition, 
-                    binned_mean = round(rep(mean_of_activity_per_condition_30_min, each=as.numeric(act_profile_window)/as.numeric(data_recording_frequency)), 10),
+                    mean = round(rep(mean_of_activity_per_condition_30_min, each=as.numeric(act_profile_window)/as.numeric(data_recording_frequency)), 10),
                     binned_sem = round(rep(sem_of_activity_per_condition_30_min, each=as.numeric(act_profile_window)/as.numeric(data_recording_frequency))), 10)
     d
   }
@@ -196,8 +197,8 @@ binning <- function(df){
   activity_30min_mean_2 <- activity_per_condition_1[seq(1, nrow(activity_per_condition_1), by = as.numeric(act_profile_window)/as.numeric(data_recording_frequency)),]
   
   #Drops unnecessary columns containing not averaged mean and SEM data
-  activity_30min_mean <- select(activity_30min_mean_2, Dec_time, Dec_ZT_time, shifted_time, Condition, binned_mean, binned_sem)
-  activity_30min_mean$binned_mean <-  30*activity_30min_mean$binned_mean
+  activity_30min_mean <- select(activity_30min_mean_2, Dec_time, Dec_ZT_time, shifted_time, Condition, mean, binned_sem)
+  activity_30min_mean$mean <-  30*activity_30min_mean$mean
   
   return(activity_30min_mean)
 }
@@ -348,7 +349,7 @@ plot_activity2 <- function(d, title_){
   colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
   display_error_bars <- FALSE
   
-  p<- plots_activity_30_min <-  ggplot(d, aes(Dec_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
+  p<- plots_activity_30_min <-  ggplot(d, aes(Dec_time, y=mean, ymax=3, ymin=0, colour=Condition)) +
     geom_line(linewidth = 1.5)+
     #geom_point(color = "black", size = 0.6)+
     #geom_vline(xintercept = c(0, 360, lull_period[1], lull_period[2], 1320, 1440))+
@@ -386,18 +387,18 @@ sliced_lists <- Map(function(df, k) {
   lapply(1:4, function(i) {
     df[df$shifted_time >= breaks[i] & df$shifted_time < breaks[i + 1], ]
   })
-}, analysis_list, seq_along(analysis_list))
+}, analysis_list_binned, seq_along(analysis_list_binned))
 
 ```
 
 
 ```{r}
-# for (i in seq(4)){
-#   for (j in seq(4)){
-#     plot_activity2(binning(sliced_lists[[i]][[j]]), paste("Average Activity Profiles for", 
-#                                                           title_list[i]))
-#   }
-# }
+for (i in seq(4)){
+  for (j in seq(4)){
+    plot_activity2(binning(sliced_lists[[i]][[j]]), paste("Average Activity Profiles for",
+                                                          title_list[i]))
+  }
+}
 ```
 
 
@@ -459,6 +460,14 @@ for(i in seq_along(sliced_lists)) {
   condition_sliced_list[[title_list[i]]] <- df_combined
 }
 ```
+
+```{r}
+test_df <- as.data.frame(condition_sliced_list[["D1E Male"]])
+#test_df <- test_df %>% filter(Condition == "WT Male")
+ggplot(test_df, aes(x = shifted_time, y = mean, color = AP, group = Condition))+
+  geom_line()
+```
+
 
 # Semimanual brackets
 ```{r}
