@@ -12,6 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(zoo)
 library(patchwork)
+library(cowplot)
 ```
 
 #Loading
@@ -205,7 +206,7 @@ binning <- function(df){
 ```
 
 ```{r}
-plot_activity <- function(d, title_, lull_period, shift, individual = T){
+plot_activity <- function(d, title_, lull_period, shift, individual = T, y_scale = 65, linewidth = 1.5){
 
   
   brakes_vector <- c((360+shift) %% 1440, (480+shift) %% 1440, (600+shift) %% 1440, (720+shift) %% 1440, 
@@ -214,13 +215,12 @@ plot_activity <- function(d, title_, lull_period, shift, individual = T){
   
   vlines <- c((360+shift) %% 1440, lull_period[1], lull_period[2], (1320+shift) %% 1440)
   
-  ac_profile_max_y <- 65
   colors <- c("#000000", "#E0CB02", "#21918c", "#BBBBBB")
   #colors <- c("#E0CB02", "#21918c", "#000000", "#BBBBBB")
   display_error_bars <- FALSE
   
-  p<- plots_activity_30_min <-  ggplot(d, aes(shifted_time, y=binned_mean, ymax=3, ymin=0, colour=Condition)) +
-    geom_line(linewidth = 1.5)+
+  p<- plots_activity_30_min <-  ggplot(d, aes(shifted_time, y=mean, ymax=3, ymin=0, colour=Condition)) +
+    geom_line(linewidth = linewidth)+
     #geom_point(color = "black", size = 0.6)+
     #geom_vline(xintercept = vlines)+
     labs(
@@ -241,7 +241,7 @@ plot_activity <- function(d, title_, lull_period, shift, individual = T){
     (if (display_error_bars == "Yes")(
         geom_errorbar(aes(ymax=30*(binned_mean + binned_sem),ymin=30*(binned_mean - binned_sem)), width=0.3)
       ))+
-    coord_cartesian(xlim = c(0, 1440), ylim = c(0, ac_profile_max_y), expand = FALSE)
+    coord_cartesian(xlim = c(0, 1440), ylim = c(0, y_scale), expand = FALSE)
 
   
   # Define the AP phase data as a simple data frame
@@ -319,13 +319,19 @@ for (i in seq(4)){
   analysis_list_binned[[i]] <- binning(analysis_list[[i]])
 }
 
-library(cowplot)
+
 
 for (i in seq(4)){
   ts_plot_list[[i]] <- ggdraw(plot_activity(binning(analysis_list[[i]]),  
                                                    title_list[i], lull_period[[i]], shift, individual = T))
 }
-ggsave("plots/leg1.png", ts_plot_list[[1]], width = 12, height = 8, dpi = 300)
+
+for (i in seq(4)){
+  ts_plot_list[[i]] <- ggdraw(plot_activity((analysis_list[[i]]),  
+                                                   title_list[i], lull_period[[i]], shift, individual = T, y_scale = 3, linewidth = 1))
+}
+
+#ggsave("plots/leg1.png", ts_plot_list[[1]], width = 12, height = 8, dpi = 300)
 ```
 
 ```{r}
