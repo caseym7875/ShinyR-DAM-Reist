@@ -1,9 +1,17 @@
+# ShinyR-DAM-Reist
+
+### Description
+This is a fork of the original ShinyR-DAM repository by Cichewicz & Hirsh for the purposes of the Reist lab at Colorado State University in Fort Collins. The major changes include the addition of the "DAM Preprocessing" project folder which contains the data collected by the lab, code to conduct statistical tests between conditions, and code to visualize our results in a different format. The readme for the original ShinyR-DAM is included below.
+
+### Authors
+Casey Martin, Noreen Reist, Colorado State University, Fort Collins, CO
+
 # ShinyR-DAM
 
 ### Authors 
 Karol Cichewicz, Jay Hirsh, University of Virginia, Charlottesville, VA
 
-### Short description
+### Original description
 ShinyR-DAM is an application for analyzing Drosophila locomotor activity, sleep, and circadian periodicity recorded by the Drosophila Activity Monitor (DAM) system, developed and manufactured by TriKinetics (Waltham, MA). Our program operates in the cloud and can be accessed via this link: https://karolcichewicz.shinyapps.io/shinyr-dam/ , or deployed locally using RStudio. For optimization and grant writing purposes, we track the usage of our app using google analytics java script included in this repository. We do not collect any information about the data processed by our program. 
 
 The source code is divided into the app.R file with the main program structure, and multiple *_ui.R and *_server.R files comprising pairs of the user interface and the algorithms used in the specific tabs of the program. *_ui.R and *_server.R files are sourced in  app.R.
